@@ -504,7 +504,7 @@ void SMPL::init() noexcept(false)
     cnpy::NpyArray faceIndices = npz_map["face_indices"];
     face_index_num = faceIndices.shape[0];
     COUT_VAR(face_index_num);
-
+    //torch::from_blob: 可以把外部内存创建一个tensor
     m__faceIndices = torch::from_blob(faceIndices.data<int>(),{ FACE_INDEX_NUM, 3 }, torch::kInt32).clone().to(m__device);
     //m__faceIndices = m__faceIndices.toType(torch::kInt64);
     // mean mesh

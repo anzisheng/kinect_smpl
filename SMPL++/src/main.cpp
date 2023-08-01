@@ -309,7 +309,10 @@ using clk = std::chrono::system_clock;
 int main(int argc, char const* argv[])
 {
 	std::string modelPath = "data/SMPL_FEMALE.npz";
-	SINGLE_SMPL::get()->usePosePca = false;
+
+	SINGLE_SMPL::get()->usePosePca =  false;
+
+
 	torch::DeviceType device_type;
 
 	if (torch::cuda::is_available())
@@ -323,6 +326,16 @@ int main(int argc, char const* argv[])
 	torch::Device device(device_type,0);
 	device.set_index(0);
 
+	//////////////////////////////////////////////////////////////////////////
+	//anzs
+	//cnpy::NpyArray arr = cnpy::npy_load("data/xyz.npy");
+	//std::vector<float> scales;
+	
+	//pred_xyz_jts_29 = torch.tensor(pred_xyz_jts_29).cuda()
+	//torch::Tensor pred_xyz_jts_29;
+	//pred_xyz_jts_29 = torch::tensor(scales);
+
+	//////////////////////////////////////////////////////////////////////////
 	cv::Mat face;
 	GLModel model;
 	OpenGL_Renderer* renderer;

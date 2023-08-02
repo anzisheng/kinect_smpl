@@ -9,7 +9,7 @@
 #include <limits>
 #include "OpenGL_Renderer.h"
 #include "GLSLShader.h"
-
+#include <cam/smplcam.h>
 //
 #include"cnpy.h"
 #include<complex>
@@ -401,6 +401,10 @@ int main(int argc, char const* argv[])
 	cout << "xyz:" << endl << pred_xyz_jts_29 << endl;
 
 	//////////////////////////////////////////////////////////////////////////
+	//构造 smplcam 对象
+	//smplcam* p_smplepose = new smplcam();
+
+	//////////////////////////////////////////////////////////////////////////
 	cv::Mat face;
 	GLModel model;
 	OpenGL_Renderer* renderer;
@@ -433,11 +437,10 @@ int main(int argc, char const* argv[])
 	{
 		auto end = clk::now();
 		auto duration = std::chrono::duration_cast<ms>(end - begin);
-		std::cout
- << "Time duration to load SMPL: " << (double)duration.count() / 1000 << " s" << std::endl;
+		std::cout << "Time duration to load SMPL: " << (double)duration.count() / 1000 << " s" << std::endl;
 
 
-		theta = pose_rand_amplitude * torch::rand({ BATCH_SIZE, JOINT_NUM, 3 })- pose_rand_amplitude/2 * torch::ones({ BATCH_SIZE, JOINT_NUM, 3 });
+		theta = pose_rand_amplitude * torch::rand({ BATCH_SIZE, JOINT_NUM, 3 }) - pose_rand_amplitude/2 * torch::ones({ BATCH_SIZE, JOINT_NUM, 3 });
 				
 		theta.data<float>()[0] = 0;
 		theta.data<float>()[1] = 0;

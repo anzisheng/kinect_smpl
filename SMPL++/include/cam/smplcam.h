@@ -2,16 +2,20 @@
 #ifndef __SMPLCAM__
 #define __SMPLCAM__
 
+#include "smpl/SMPL.h"
 #include <torch/torch.h>
 using namespace torch;
 class smplcam
 {
 public:
-	smplcam();
-	//void call_forward();
-private:
-	int  m_smpl_dtype;
-	torch::Tensor m_h36m_jregressor;
+	smplcam(torch::Device device);
+	void call_forward(const torch::Tensor& xyz,const torch::Tensor& shape);
+public:
+	smpl::SMPL* m_smpl;
+	torch::Tensor m_pred_xyz_jts_29;
+	torch::Tensor m_pred_shape;
+// 	int  m_smpl_dtype;
+// 	torch::Tensor m_h36m_jregressor;
 };
 
 

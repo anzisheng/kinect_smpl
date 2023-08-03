@@ -4,6 +4,7 @@
 #include "definition/def.h"
 #include "toolbox/Singleton.hpp"
 #include "smpl/SMPL.h"
+#include <cam/smplcam.h>
 #define SINGLE_SMPL smpl::Singleton<smpl::SMPL>
 #include "opencv2/opencv.hpp"
 #include <limits>
@@ -319,11 +320,6 @@ using clk = std::chrono::system_clock;
 
 int main(int argc, char const* argv[])
 {
-	std::string modelPath = "data/SMPL_FEMALE.npz";
-
-	SINGLE_SMPL::get()->usePosePca =  false;
-
-
 	torch::DeviceType device_type;
 
 	if (torch::cuda::is_available())
@@ -334,8 +330,30 @@ int main(int argc, char const* argv[])
 	{
 		device_type = torch::kCPU;
 	}
-	torch::Device device(device_type,0);
+	torch::Device device(device_type, 0);
 	device.set_index(0);
+
+
+	std::string modelPath = "data/SMPL_FEMALE.npz";
+
+	smplcam* p_smplcam = new smplcam(device);
+
+	p_smplcam->m_smpl = SINGLE_SMPL::get();
+
+// 	//anzs 加载xyz.npy
+// 	cnpy::NpyArray arr = cnpy::npy_load("data/xyz.npy");
+// 	//std::vector<float> scales;
+// 
+// 	//pred_xyz_jts_29 = torch.tensor(pred_xyz_jts_29).cuda()
+// 	torch::Tensor pred_xyz_jts_29;
+// 	pred_xyz_jts_29 = torch::from_blob(arr.data<double>(), { 1,29,3 }).to(device);
+// 	cout << "xyz:" << endl << pred_xyz_jts_29 << endl;
+
+	
+	
+	SINGLE_SMPL::get()->usePosePca =  false;
+
+
 
 	//////////////////////////////////////////////////////////////////////////
 	// cnpy example:
@@ -391,14 +409,6 @@ int main(int argc, char const* argv[])
 
 
 	// 
-	//anzs 加载xyz.npy
-	cnpy::NpyArray arr = cnpy::npy_load("data/xyz.npy");
-	//std::vector<float> scales;
-	
-	//pred_xyz_jts_29 = torch.tensor(pred_xyz_jts_29).cuda()
-	torch::Tensor pred_xyz_jts_29;
-	pred_xyz_jts_29 = torch::from_blob(arr.data<double>(),{1,29,3}).to(device);
-	cout << "xyz:" << endl << pred_xyz_jts_29 << endl;
 
 	//////////////////////////////////////////////////////////////////////////
 	//构造 smplcam 对象
@@ -445,14 +455,16 @@ int main(int argc, char const* argv[])
 		theta.data<float>()[0] = 0;
 		theta.data<float>()[1] = 0;
 		theta.data<float>()[2] = 0;
+		std::cout <<"theta:"<< endl << theta << endl;
 
 		for (int i = 0; i < JOINT_NUM; ++i)
-		{
+		{	//仅仅剩下z值
 			theta.data<float>()[i*3+0] = 0; // rx
 			theta.data<float>()[i*3+1] = 0; // ry
 			//theta.data<float>()[i*3+2] = 0; // rz
 		}
 		theta = theta.to(device);
+		std::cout << "theta rx,ry is set 0:" << endl << theta << endl;
 		try
 		{
 			const int64_t LOOPS = 1;
@@ -467,7 +479,7 @@ int main(int argc, char const* argv[])
 
 			vertices = SINGLE_SMPL::get()->getVertex();
 			SINGLE_SMPL::get()->setVertPath("model.obj");
-			//SINGLE_SMPL::get()->out(0);
+			//SINGLE_SMPL::get()->out(0); 
 		}
 		catch (std::exception& e)
 		{

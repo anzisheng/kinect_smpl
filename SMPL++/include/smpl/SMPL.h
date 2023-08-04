@@ -190,7 +190,7 @@ class SMPL final
 {
 public:
     bool usePosePca;
-private: // PIRVATE ATTRIBUTES
+    //private: // PIRVATE ATTRIBUTES
 
     torch::Device m__device;
 
@@ -205,6 +205,10 @@ private: // PIRVATE ATTRIBUTES
     torch::Tensor m__jointRegressor;
     torch::Tensor m__kinematicTree;
     torch::Tensor m__weights;
+
+    torch::Tensor m_parents;
+    torch::Tensor m_children;
+    torch::Tensor m_leaf_name;
 
     BlendShape m__blender;
     JointRegression m__regressor;
@@ -262,7 +266,19 @@ public: // PUBLIC METHODS
         std::vector<float>& jy,
         std::vector<float>& jz
     ) noexcept(false);
-
+    //////////////////////////////////////
+    //anzs add 
+    void hybrik(const torch::Tensor& pose_skeleton,
+         const torch::Tensor& betas
+//          const torch::Tensor& v_template,
+//          const torch::Tensor& shapedirs,
+//          const torch::Tensor& posedirs,
+//          const torch::Tensor& J_regressor,
+//          const torch::Tensor& J_regressor_h36m,
+//          const torch::Tensor& parents,
+//          const torch::Tensor& children_map,
+//          const torch::Tensor& lbs_weights
+        );
 };
 
 //=============================================================================

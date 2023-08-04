@@ -20,17 +20,23 @@ smplcam::smplcam(torch::Device device)
 
 }
 
-void smplcam::call_forward(const torch::Tensor& xyz, const torch::Tensor& shape)
+void smplcam::call_forward(/*const torch::Tensor& xyz, const torch::Tensor& shape*/)
 {
-	output = self.smpl.hybrik(
-		pose_skeleton = pred_xyz_jts_29.type(self.smpl_dtype) * 2.2, #self.depth_factor, # unit: meter
-		#pose_skeleton = pred_xyz_jts_29,
-		betas = pred_shape.type(self.smpl_dtype),
-		#phis = None,
-		#pred_phi.type(self.smpl_dtype),
-		global_orient = None,
-		return_verts = True
-	);
+	m_smpl->hybrik(m_pred_xyz_jts_29, m_pred_shape);
+
+
+
+// 	output = self.smpl.hybrik(
+// 		pose_skeleton = pred_xyz_jts_29.type(self.smpl_dtype) * 2.2, #self.depth_factor, # unit: meter
+// 		#pose_skeleton = pred_xyz_jts_29,
+// 		betas = pred_shape.type(self.smpl_dtype),
+// 		#phis = None,
+// 		#pred_phi.type(self.smpl_dtype),
+// 		global_orient = None,
+// 		return_verts = True
+// 
+// 		m_skinner.hybrik();
+// 	);
 
 	//m_smpl->hybrik()
 

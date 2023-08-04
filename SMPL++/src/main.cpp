@@ -340,6 +340,8 @@ int main(int argc, char const* argv[])
 
 	p_smplcam->m_smpl = SINGLE_SMPL::get();
 
+	p_smplcam->call_forward(); //.hybrik(); // .skinning();
+
 // 	//anzs º”‘ÿxyz.npy
 // 	cnpy::NpyArray arr = cnpy::npy_load("data/xyz.npy");
 // 	//std::vector<float> scales;
@@ -352,6 +354,8 @@ int main(int argc, char const* argv[])
 	
 	
 	SINGLE_SMPL::get()->usePosePca =  false;
+
+
 
 
 

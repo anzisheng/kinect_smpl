@@ -59,6 +59,20 @@ SMPL::SMPL() noexcept(true) :
     m__transformer(),
     m__skinner()
 {
+
+    
+    // parent([-1, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21, 15, 22, 23, 10, 11], device = 'cuda:0')
+        //children([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 27, 28, 15, 16, 17, 24, 18, 19, 20, 21, 22, 23, 25, 26, -1, -1, -1, -1, -1], device = 'cuda:0')
+
+    int parent[] = { -1, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21, 15, 22, 23, 10, 11 };
+    m_parents = torch::from_blob(parent, (29));
+
+    int children[] = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 27, 28, 15, 16, 17, 24, 18, 19, 20, 21, 22, 23, 25, 26, -1, -1, -1, -1, -1 };
+    m_children = torch::from_blob(children, (29));
+
+
+    std::string LEAF_NAMES[] = {"head", "left_middle", "right_middle", "left_bigtoe", "right_bigtoe" };
+    m_leaf_name = torch::from_blob(LEAF_NAMES, { 1,5 });
 }
 
 /**SMPL (overload)
@@ -886,6 +900,39 @@ void SMPL::getSkeleton(int64_t index,
     }
 
     return;
+}
+
+void SMPL::hybrik(const torch::Tensor& pose_skeleton, const torch::Tensor& betas)
+{
+    batch_size = pose_skeleton.size(0);
+
+// 	void hybrik(const torch::Tensor & pose_skeleton,
+// 		const torch::Tensor & betas,
+// 		const torch::Tensor & v_template,
+// 		const torch::Tensor & shapedirs,
+// 		const torch::Tensor & posedirs,
+// 		const torch::Tensor & J_regressor,
+// 		const torch::Tensor & J_regressor_h36m,
+// 		const torch::Tensor & parents,
+// 		const torch::Tensor & children_map,
+// 		const torch::Tensor & lbs_weights
+// 	);
+
+    torch::Tensor J_regressor_h36m = torch::zeros((17, 6890));
+
+    m__skinner.hybrik(pose_skeleton,
+        betas, 
+        m__templateRestShape, 
+        m__shapeBlendBasis, //// (6890, 3, 10)
+        m__poseBlendBasis,  //// (6890, 3, 207) python 为torch.Size([207, 20670])，需调整
+        m__jointRegressor,  //(24, 6890) python torch.Size([24, 6890])
+        J_regressor_h36m, //
+        m_parents,
+        m_children,
+        m__weights
+    );
+
+
 }
 
 //=============================================================================

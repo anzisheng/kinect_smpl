@@ -575,6 +575,24 @@ namespace smpl
         return cart;
     }
 
+	void LinearBlendSkinning::hybrik(
+        const torch::Tensor& torpose_skeleton,
+        const torch::Tensor& betas, 
+        //const torch::Tensor& global_orient, 
+        //phis,
+        const torch::Tensor&  v_template,
+        const torch::Tensor& shapedirs,
+        const torch::Tensor& posedirs,
+        const torch::Tensor& J_regressor,
+        const torch::Tensor& J_regressor_h36m,
+        const torch::Tensor& parents,
+        const torch::Tensor& children,
+        const torch::Tensor& lbs_weights)
+     {
+        std::cout << "LinearBlendSkinning::hybrik" << std::endl;
+
+    }
+
     //=============================================================================
 } // namespace smpl
 //=============================================================================

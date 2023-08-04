@@ -194,6 +194,76 @@ public: // PUBLIC METHODS
     // %% Linear Blend Skinning %%
     void skinning() noexcept(false);
 
+    //////////////////////////////////////////////////////////////////////////
+    //anzs
+    // 
+	// def hybrik( betas, global_orient, pose_skeleton, #phis,
+	//v_template, shapedirs, posedirs, J_regressor, J_regressor_h36m, parents, children,
+	//	lbs_weights, dtype = torch.float32, train = False, leaf_thetas = None):
+	//	''' Performs Linear Blend Skinning with the given shape and skeleton joints
+    //
+    /*
+	*
+		Parameters
+		----------
+		betas : torch.tensor BxNB
+			The tensor of shape parameters
+		global_orient : torch.tensor Bx3
+			The tensor of global orientation
+		pose_skeleton : torch.tensor BxJ*3
+			The pose skeleton in (X, Y, Z) format
+		phis : torch.tensor BxJx2
+			The rotation on bone axis parameters
+		v_template torch.tensor BxVx3
+			The template mesh that will be deformed
+		shapedirs : torch.tensor 1xNB
+			The tensor of PCA shape displacements
+		posedirs : torch.tensor Px(V * 3)
+			The pose PCA coefficients
+		J_regressor : torch.tensor JxV
+			The regressor array that is used to calculate the joints from
+			the position of the vertices
+		J_regressor_h36m : torch.tensor 17xV
+			The regressor array that is used to calculate the 17 Human3.6M joints from
+			the position of the vertices
+		parents: torch.tensor J
+			The array that describes the kinematic parents for the model
+		children: dict
+			The dictionary that describes the kinematic chidrens for the model
+		lbs_weights: torch.tensor N x V x (J + 1)
+			The linear blend skinning weights that represent how much the
+			rotation matrix of each part affects each vertex
+		dtype: torch.dtype, optional
+
+		Returns
+		-------
+		verts: torch.tensor BxVx3
+			The vertices of the mesh after applying the shape and pose
+			displacements.
+		joints: torch.tensor BxJx3
+			The joints of the model
+		rot_mats: torch.tensor BxJx3x3
+			The rotation matrics of each joints
+	'''
+
+    */
+	void hybrik(const torch::Tensor& torpose_skeleton,
+		const torch::Tensor& betas,
+		//const torch::Tensor& global_orient,
+		//phis,
+		const torch::Tensor& v_template,
+		const torch::Tensor& shapedirs,
+		const torch::Tensor& posedirs,
+		const torch::Tensor& J_regressor,
+		const torch::Tensor& J_regressor_h36m,
+		const torch::Tensor& parents,
+		const torch::Tensor& children,
+		const torch::Tensor& lbs_weights);// dtype = torch.float32, train = False, leaf_thetas = None)
+
+
+
+
+
 };
 
 //=============================================================================

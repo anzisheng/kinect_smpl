@@ -34,6 +34,7 @@
 #include "toolbox/Exception.h"
 #include "toolbox/TorchEx.hpp"
 #include "smpl/LinearBlendSkinning.h"
+#include <exception>
 //----------
 #define COUT_VAR(x) std::cout << #x"=" << x << std::endl;
 #define COUT_ARR(x) std::cout << "---------"#x"---------" << std::endl;\
@@ -575,12 +576,50 @@ namespace smpl
         return cart;
     }
 
-	void LinearBlendSkinning::hybrik(
+    torch::Tensor LinearBlendSkinning::blend_shapes(const torch::Tensor& betas, const torch::Tensor& shape_disps)
+    {
+		/* Calculates the per vertex displacement due to the blend shapes
+
+
+			Parameters
+			----------
+			betas : torch.tensor Bx(num_betas)
+			Blend shape coefficients
+			shape_disps : torch.tensor Vx3x(num_betas)
+			Blend shapes
+
+			Returns
+			------ -
+			torch.tensor BxVx3
+			The per - vertex displacement due to shape deformation
+			*/
+
+			//Displacement[b, m, k] = sum_{ l } betas[b, l] * shape_disps[m, k, l]
+			// i.e.Multiply each shape displacement by its corresponding beta and
+			// then sum them.
+        torch::Tensor blend_shape;
+        try
+        {
+            blend_shape = torch::einsum("bl, mkl->bmk", (betas, shape_disps));
+        }
+		catch (std::exception& e)
+		{
+            std::cout << e.what() << std::endl;
+			throw;
+		}
+        
+        
+        return blend_shape;
+
+
+    }
+
+    void LinearBlendSkinning::hybrik(
         const torch::Tensor& torpose_skeleton,
-        const torch::Tensor& betas, 
+        const torch::Tensor& betas,
         //const torch::Tensor& global_orient, 
         //phis,
-        const torch::Tensor&  v_template,
+        const torch::Tensor& v_template,
         const torch::Tensor& shapedirs,
         const torch::Tensor& posedirs,
         const torch::Tensor& J_regressor,
@@ -588,8 +627,27 @@ namespace smpl
         const torch::Tensor& parents,
         const torch::Tensor& children,
         const torch::Tensor& lbs_weights)
-     {
+    {
         std::cout << "LinearBlendSkinning::hybrik" << std::endl;
+        batch_size = torpose_skeleton.size(0);
+        //device = pose_skeleton.device;
+
+        // 1. Add shape contribution
+        torch::Tensor result = blend_shapes(betas, shapedirs);
+        torch::Tensor v_shaped = v_template + blend_shapes(betas, shapedirs);
+
+
+
+
+//             torch::Tensor rel_rest_pose = rest_pose.clone();
+//         std::cout << rel_rest_pose.sizes() << std::endl; //[6890, 3]
+        //rel_rest_pose[:, 1 : ] -= rest_pose[:, parents[1:]].clone();
+        //rel_rest_pose.index( { Slice(None), Slice(2,None }) -= rest_pose[Slice(None), parents[1:]].clone();
+
+    //}
+
+
+
 
     }
 

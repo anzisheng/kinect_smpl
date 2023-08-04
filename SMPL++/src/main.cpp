@@ -339,6 +339,10 @@ int main(int argc, char const* argv[])
 	smplcam* p_smplcam = new smplcam(device);
 
 	p_smplcam->m_smpl = SINGLE_SMPL::get();
+	SINGLE_SMPL::get()->setDevice(device);
+	SINGLE_SMPL::get()->setModelPath(modelPath);
+	SINGLE_SMPL::get()->init();
+
 
 	p_smplcam->call_forward(); //.hybrik(); // .skinning();
 
@@ -436,10 +440,10 @@ int main(int argc, char const* argv[])
 
 
 	auto begin = clk::now();
-	SINGLE_SMPL::get()->setDevice(device);
-	SINGLE_SMPL::get()->setModelPath(modelPath);
-	SINGLE_SMPL::get()->init();
-	
+// 	SINGLE_SMPL::get()->setDevice(device);
+// 	SINGLE_SMPL::get()->setModelPath(modelPath);
+// 	SINGLE_SMPL::get()->init();
+// 	
 	torch::Tensor vertices;
 	torch::Tensor beta;
 	torch::Tensor theta;

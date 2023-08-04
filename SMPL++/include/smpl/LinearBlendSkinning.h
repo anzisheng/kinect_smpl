@@ -247,6 +247,8 @@ public: // PUBLIC METHODS
 	'''
 
     */
+	torch::Tensor blend_shapes(const torch::Tensor& betas, const torch::Tensor& shape_disps);
+
 	void hybrik(const torch::Tensor& torpose_skeleton,
 		const torch::Tensor& betas,
 		//const torch::Tensor& global_orient,

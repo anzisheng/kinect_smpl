@@ -597,10 +597,16 @@ namespace smpl
 			//Displacement[b, m, k] = sum_{ l } betas[b, l] * shape_disps[m, k, l]
 			// i.e.Multiply each shape displacement by its corresponding beta and
 			// then sum them.
+
+        std::cout << "betas shape:" << betas.sizes() << std::endl;
+        std::cout << "shape_disps shape:" << shape_disps.sizes() << std::endl;
+
         torch::Tensor blend_shape;
+        std::cout << "blend_shape shape:" << blend_shape.sizes() << std::endl;
         try
         {
             blend_shape = torch::einsum("bl, mkl->bmk", (betas, shape_disps));
+            std::cout << "blend_shape shape:" << blend_shape.sizes() << std::endl;
         }
 		catch (std::exception& e)
 		{

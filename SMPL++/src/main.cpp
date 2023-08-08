@@ -317,9 +317,21 @@ float rescale(cv::Mat& image, int maxw, int maxh)
 
 using ms = std::chrono::milliseconds;
 using clk = std::chrono::system_clock;
-
+#include "torch/script.h"
+using namespace torch::indexing;
 int main(int argc, char const* argv[])
 {
+	
+// 	torch::Tensor a = torch::linspace(1, 4, 4).reshape({ 2, 2 });
+// 	std::cout << a << std::endl;
+// 	//a.index_put_({ 1, 1 }, 100);
+// 	torch::Tensor b = a.index_put_(a.index('...',Slice(None,1), 100);
+// 	// b.index({"...", Slice({None, 2})})
+// 	std::cout << a << std::endl;
+// 	
+// 	return 0;
+
+
 	torch::DeviceType device_type;
 
 	if (torch::cuda::is_available())

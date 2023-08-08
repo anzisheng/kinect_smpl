@@ -248,6 +248,27 @@ public: // PUBLIC METHODS
 
     */
 	torch::Tensor blend_shapes(const torch::Tensor& betas, const torch::Tensor& shape_disps);
+	torch::Tensor vertices2joints(const torch::Tensor& J_regressor, const torch::Tensor& shape_disps);
+// 	def vertices2joints(J_regressor, vertices) :
+// 		''' Calculates the 3D joint locations from the vertices
+// 
+// 		Parameters
+// 		----------
+// 		J_regressor : torch.tensor JxV
+// 		The regressor array that is used to calculate the joints from the
+// 		position of the vertices
+// 		vertices : torch.tensor BxVx3
+// 		The tensor of mesh vertices
+// 
+// 		Returns
+// 		------ -
+// 		torch.tensor BxJx3
+// 		The location of the joints
+// 		'''
+// 
+// 		return torch.einsum('bik,ji->bjk', [vertices, J_regressor])
+
+
 
 	void hybrik(const torch::Tensor& torpose_skeleton,
 		const torch::Tensor& betas,
@@ -263,7 +284,21 @@ public: // PUBLIC METHODS
 		const torch::Tensor& lbs_weights);// dtype = torch.float32, train = False, leaf_thetas = None)
 
 
+	torch::Tensor batch_inverse_kinematics_transform(
+		const torch::Tensor& pose_skeleton,// global_orient,		
+		const torch::Tensor& rest_pose,
+		const torch::Tensor& children, 
+		const torch::Tensor& parents// dtype = torch.float32, train = False,
+		//const torch::Tensor& leaf_thetas = None
+	);
 
+	torch::Tensor batch_get_pelvis_orient_svd(
+		const torch::Tensor& rel_pose_skeleton, 
+		const torch::Tensor& rel_rest_pose,
+		const torch::Tensor& parents, 
+		const torch::Tensor& children
+		//dtype
+	);
 
 
 };

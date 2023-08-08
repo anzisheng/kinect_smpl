@@ -34,6 +34,8 @@
 #include "toolbox/Exception.h"
 #include "toolbox/TorchEx.hpp"
 #include "smpl/LinearBlendSkinning.h"
+#include "torch/script.h"
+using namespace torch::indexing;
 #include <exception>
 //----------
 #define COUT_VAR(x) std::cout << #x"=" << x << std::endl;
@@ -605,7 +607,8 @@ namespace smpl
         std::cout << "blend_shape shape:" << blend_shape.sizes() << std::endl;
         try
         {
-            blend_shape = torch::einsum("bl, mkl->bmk", (betas, shape_disps));
+            //at::TensorList t = { betas, shape_disps };
+            blend_shape = torch::einsum("bl, mkl->bmk", { betas, shape_disps });
             std::cout << "blend_shape shape:" << blend_shape.sizes() << std::endl;
         }
 		catch (std::exception& e)
@@ -617,11 +620,150 @@ namespace smpl
         
         return blend_shape;
 
+    }
+
+    torch::Tensor LinearBlendSkinning::batch_inverse_kinematics_transform(
+        const torch::Tensor& pose_skeleton,// global_orient,		
+        const torch::Tensor& rest_pose,
+        const torch::Tensor& children,
+        const torch::Tensor& parents// dtype = torch.float32, train = False,
+        //const torch::Tensor& leaf_thetas = None
+    )
+    {
+        /*
+		*     """
+	Applies a batch of inverse kinematics transfoirm to the joints
+
+	Parameters
+	----------
+	pose_skeleton : torch.tensor BxNx3
+		Locations of estimated pose skeleton.
+	global_orient : torch.tensor Bx1x3x3
+		Tensor of global rotation matrices
+	phis : torch.tensor BxNx2
+		The rotation on bone axis parameters
+	rest_pose : torch.tensor Bx(N+1)x3
+		Locations of rest_pose. (Template Pose)
+	children: dict
+		The dictionary that describes the kinematic chidrens for the model
+	parents : torch.tensor Bx(N+1)
+		The kinematic tree of each object
+	dtype : torch.dtype, optional:
+		The data type of the created tensors, the default is torch.float32
+
+	Returns
+	-------
+	rot_mats: torch.tensor Bx(N+1)x3x3
+		The rotation matrics of each joints
+	rel_transforms : torch.tensor Bx(N+1)x4x4
+		The relative (with respect to the root joint) rigid transformations
+		for all the joints
+	"""
+
+        */
+        batch_size = pose_skeleton.size(0);
+        torch::Device device = this->m__device;
+        torch::Tensor rel_rest_pose = rest_pose.clone();
+        std::cout << "rel_rest_pose :" << rel_rest_pose.sizes() << std::endl;
+        //rel_rest_pose[:, 1 : ] -= rest_pose[:, parents[1:]].clone();
+
+
+        torch::Tensor par = parents.index({ Slice(1,None) });                
+        std::cout << "par:" << par.sizes() << par << std::endl;
+
+        torch::Tensor b = torch::tensor({ 0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2 });
+        torch::Tensor temp = rest_pose.index({ Slice(), {b}});
+        std::cout << "temp :" << temp.sizes() << std::endl;
+
+        //rel_rest_pose.index({ Slice(),Slice(1),Slice() }) -= rest_pose.index({ Slice(), parents.index({Slice(1,None)}) });// .clone();
+        // 
+        rel_rest_pose.index({ Slice(),Slice(1),Slice() }) = rest_pose.index({ Slice(), {b} });        
+        std::cout << "rel_rest_pose:" << rel_rest_pose.sizes() << std::endl;
+
+        rel_rest_pose = torch::unsqueeze(rel_rest_pose, -1);
+        std::cout << "rel_rest_pose:" << rel_rest_pose.sizes() << std::endl; //torch.Size([1, 29, 3, 1])
+
+
+		//# rotate the T pose
+        torch::Tensor rotate_rest_pose = torch::zeros_like(rel_rest_pose);
+        std::cout << "rotate_rest_pose:" << rotate_rest_pose.sizes() << std::endl;
+
+		//# set up the root
+        //rotate_rest_pose[:, 0] = rel_rest_pose[:, 0]
+        rotate_rest_pose.index({ Slice(), 0 }) = rel_rest_pose.index({ Slice(),0 });
+        std::cout << "rotate_rest_pose:" << rotate_rest_pose.sizes() << std::endl;
+
+
+// 		rel_pose_skeleton = torch.unsqueeze(pose_skeleton.clone(), dim = -1).detach()
+//		rel_pose_skeleton[:, 1 : ] = rel_pose_skeleton[:, 1 : ] - rel_pose_skeleton[:, parents[1:]].clone()
+// 		rel_pose_skeleton[:, 0] = rel_rest_pose[:, 0]
+
+        torch::Tensor rel_pose_skeleton = torch::unsqueeze(pose_skeleton.clone(), -1).detach();
+        rel_pose_skeleton.index({ Slice(),1,Slice() }) = rel_pose_skeleton.index({ Slice(),1, Slice() }) - rel_pose_skeleton.index({ Slice(),{b} }).clone();
+        rel_pose_skeleton.index({ Slice(),0 }) = rel_rest_pose.index({ Slice(),0 });
+
+// 		# the predicted final pose
+// 			final_pose_skeleton = torch.unsqueeze(pose_skeleton.clone(), dim = -1)
+// 			final_pose_skeleton = final_pose_skeleton - final_pose_skeleton[:, 0 : 1] + rel_rest_pose[:, 0 : 1]
+        
+        torch::Tensor final_pose_skeleton = torch::unsqueeze(pose_skeleton.clone(), -1);
+        final_pose_skeleton = final_pose_skeleton - final_pose_skeleton.index({ Slice(), Slice(0,1) }) + rel_rest_pose.index({ Slice(), Slice(0,1) });//
+
+
+        rel_rest_pose = rel_rest_pose;
+        //rel_pose_skeleton = rel_pose_skeleton;
+        final_pose_skeleton = final_pose_skeleton;
+        rotate_rest_pose = rotate_rest_pose;
+
+
+        /*
+		global_orient_mat = batch_get_pelvis_orient_svd(
+		rel_pose_skeleton.clone(), rel_rest_pose.clone(), parents, children, dtype)
+        */
+
+
+
+
+
+
+
+
+        return rel_rest_pose;//temperary
+
+
+
+
 
     }
 
+
+    torch::Tensor LinearBlendSkinning::vertices2joints(const torch::Tensor& J_regressor, const torch::Tensor& vertices)
+    {
+        return torch::einsum("bik, ji->bjk", { vertices, J_regressor });
+    }
+// 	def vertices2joints(J_regressor, vertices) :
+// 		''' Calculates the 3D joint locations from the vertices
+// 
+// 		Parameters
+// 		----------
+// 		J_regressor : torch.tensor JxV
+// 		The regressor array that is used to calculate the joints from the
+// 		position of the vertices
+// 		vertices : torch.tensor BxVx3
+// 		The tensor of mesh vertices
+// 
+// 		Returns
+// 		------ -
+// 		torch.tensor BxJx3
+// 		The location of the joints
+// 		'''
+// 
+// 		return torch.einsum('bik,ji->bjk', [vertices, J_regressor])
+// 
+
+
     void LinearBlendSkinning::hybrik(
-        const torch::Tensor& torpose_skeleton,
+        const torch::Tensor& pose_skeleton,
         const torch::Tensor& betas,
         //const torch::Tensor& global_orient, 
         //phis,
@@ -635,27 +777,59 @@ namespace smpl
         const torch::Tensor& lbs_weights)
     {
         std::cout << "LinearBlendSkinning::hybrik" << std::endl;
-        batch_size = torpose_skeleton.size(0);
+        batch_size = pose_skeleton.size(0);
         //device = pose_skeleton.device;
 
         // 1. Add shape contribution
-        torch::Tensor result = blend_shapes(betas, shapedirs);
+        //torch::Tensor result = blend_shapes(betas, shapedirs);
         torch::Tensor v_shaped = v_template + blend_shapes(betas, shapedirs);
+        std::cout << "v_shaped :" << v_shaped.sizes() << std::endl;
+
+        //rest_J = torch.zeros((v_shaped.shape[0], 29, 3), dtype=dtype, device=device)
+        torch::Tensor  rest_J = torch::zeros({ batch_size, 29, 3 });
+        std::cout << "test_J " << rest_J.sizes() << std::endl;
+
+        //rest_J[:, :24] = vertices2joints(J_regressor, v_shaped)
+        torch::Tensor test_J_part = rest_J.index({ Slice(), Slice(None,24) });
+
+        std::cout << "test_J_part " << test_J_part.sizes() << std::endl;
+
+        //rest_J[:, :24] = vertices2joints(J_regressor, v_shaped)
+//         test_J_part = vertices2joints(J_regressor, v_shaped);
+//         std::cout << "test_J_part " << test_J_part.sizes() << std::endl;
+
+        rest_J.index({ Slice(), Slice(None,24) }) = vertices2joints(J_regressor, v_shaped);
+        std::cout << "test_J " << rest_J.sizes() << rest_J << std::endl;
+
+        //leaf_number = [411, 2445, 5905, 3216, 6617]
+// 		std::vector<int> v = { 411, 2445, 5905, 3216, 6617 };
+//         torch::Tensor leaf_number = torch::from_blob(v.data(), { 1, 5 });
+//         std::cout << "leaf_number " << leaf_number << std::endl;
+
+        torch::Tensor leaf_number = torch::tensor({ 411, 2445, 5905, 3216, 6617 });
+		std::cout << "==> leaf_number is:\n" << leaf_number << std::endl;
+
+
+        torch::Tensor  leaf_vertices = v_shaped.index({ Slice(),leaf_number.data() }).clone();// [:, leaf_number] .clone()
+        std::cout << "leaf_vertices " << leaf_vertices.sizes()<< std::endl << leaf_vertices <<std::endl;
+
+
+        //rest_J[:, 24:] = leaf_vertices
+        rest_J.index({ Slice(), Slice(24,None) }) = leaf_vertices;
+        std::cout << "test_J " << rest_J.sizes() << rest_J<< std::endl;
 
 
 
-
-//             torch::Tensor rel_rest_pose = rest_pose.clone();
-//         std::cout << rel_rest_pose.sizes() << std::endl; //[6890, 3]
-        //rel_rest_pose[:, 1 : ] -= rest_pose[:, parents[1:]].clone();
-        //rel_rest_pose.index( { Slice(None), Slice(2,None }) -= rest_pose[Slice(None), parents[1:]].clone();
-
-    //}
-
-
-
+        //# 3. Get the rotation matrics
+        torch::Tensor rot_mats = batch_inverse_kinematics_transform(
+            pose_skeleton, //global_orient, #phis,
+            rest_J.clone(), children, parents//, dtype = dtype, train = train,
+            //leaf_thetas = leaf_thetas
+        );
 
     }
+
+
 
     //=============================================================================
 } // namespace smpl

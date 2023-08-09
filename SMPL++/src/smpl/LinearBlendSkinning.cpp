@@ -667,18 +667,24 @@ namespace smpl
         std::cout << "rel_rest_pose :" << rel_rest_pose.sizes() << std::endl;
         //rel_rest_pose[:, 1 : ] -= rest_pose[:, parents[1:]].clone();
 
+ 		std::vector<int> parents_exclude_0_v = { 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21, 15, 22, 23, 10, 11 };
+        torch::Tensor parents_exclude_0 = torch::tensor(parents_exclude_0_v);// .data(), { 29 }).toType(torch::kInt8);
+        parents_exclude_0 = parents_exclude_0.to(m__device);
+        std::cout << "parents_exclude_0:" << parents_exclude_0.sizes() << parents_exclude_0.device()<< parents_exclude_0 << std::endl;
 
-        torch::Tensor par = parents.index({ Slice(1,None) });                
-        std::cout << "par:" << par.sizes() << par << std::endl;
+        //torch::Tensor par = parents.index({ Slice(1,None) });                
+        //std::cout << "par:" << par.sizes() << par << std::endl;
 
-        torch::Tensor b = torch::tensor({ 0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2 });
-        torch::Tensor temp = rest_pose.index({ Slice(), {b}});
-        std::cout << "temp :" << temp.sizes() << std::endl;
+        //torch::Tensor b = torch::tensor({ 0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2 });
+//         torch::Tensor temp = rest_pose.index({ Slice(), {parents_exclude_0}});
+//         std::cout << "temp :" << temp.sizes() << std::endl;
 
         //rel_rest_pose.index({ Slice(),Slice(1),Slice() }) -= rest_pose.index({ Slice(), parents.index({Slice(1,None)}) });// .clone();
         // 
-        rel_rest_pose.index({ Slice(),Slice(1),Slice() }) = rest_pose.index({ Slice(), {b} });        
-        std::cout << "rel_rest_pose:" << rel_rest_pose.sizes() << std::endl;
+        rel_rest_pose.index({ Slice(),Slice(1),Slice() }) -= rest_pose.index({ Slice(), {parents_exclude_0} });
+        std::cout << "rel_rest_pose:" << rel_rest_pose.sizes()<< rel_rest_pose << std::endl;
+        std::cout << "rel_rest_pose.index({ Slice(),Slice(1),Slice() }):" << rel_rest_pose.index({ Slice(),Slice(1),Slice() }).sizes() << rel_rest_pose.index({ Slice(),Slice(1),Slice() }) << std::endl;
+        
 
         rel_rest_pose = torch::unsqueeze(rel_rest_pose, -1);
         std::cout << "rel_rest_pose:" << rel_rest_pose.sizes() << std::endl; //torch.Size([1, 29, 3, 1])
@@ -698,16 +704,49 @@ namespace smpl
 //		rel_pose_skeleton[:, 1 : ] = rel_pose_skeleton[:, 1 : ] - rel_pose_skeleton[:, parents[1:]].clone()
 // 		rel_pose_skeleton[:, 0] = rel_rest_pose[:, 0]
 
+        //torch::Tensor b2 = torch::tensor({ 0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2,0, 1, 3, 2 });
+
         torch::Tensor rel_pose_skeleton = torch::unsqueeze(pose_skeleton.clone(), -1).detach();
-        rel_pose_skeleton.index({ Slice(),1,Slice() }) = rel_pose_skeleton.index({ Slice(),1, Slice() }) - rel_pose_skeleton.index({ Slice(),{b} }).clone();
+		torch::Tensor temp = torch::squeeze(rel_pose_skeleton);
+		std::cout << "temp:" << temp.sizes() << temp << std::endl;
+
+        try 
+        {
+            rel_pose_skeleton.index({ Slice(),Slice(1,None) }) = rel_pose_skeleton.index({ Slice(),Slice(1,None) }) - rel_pose_skeleton.index({ Slice(),{parents_exclude_0} }).clone();
+        }
+		catch (std::exception& e)
+		{
+			std::cout << e.what() << std::endl;
+			throw;
+		}
+
         rel_pose_skeleton.index({ Slice(),0 }) = rel_rest_pose.index({ Slice(),0 });
+
+        std::cout << "rel_pose_skeleton:" << rel_pose_skeleton.sizes() << rel_pose_skeleton << std::endl;
+
+        /*torch::Tensor*/ temp = torch::squeeze(rel_pose_skeleton);
+        std::cout << "temp:" << temp.sizes() << temp << std::endl;
+
 
 // 		# the predicted final pose
 // 			final_pose_skeleton = torch.unsqueeze(pose_skeleton.clone(), dim = -1)
 // 			final_pose_skeleton = final_pose_skeleton - final_pose_skeleton[:, 0 : 1] + rel_rest_pose[:, 0 : 1]
         
         torch::Tensor final_pose_skeleton = torch::unsqueeze(pose_skeleton.clone(), -1);
-        final_pose_skeleton = final_pose_skeleton - final_pose_skeleton.index({ Slice(), Slice(0,1) }) + rel_rest_pose.index({ Slice(), Slice(0,1) });//
+        try
+        {
+            final_pose_skeleton = final_pose_skeleton - final_pose_skeleton.index({ Slice(), Slice(0,1) }) + rel_rest_pose.index({ Slice(), Slice(0,1) });//
+        }
+		catch (std::exception& e)
+		{
+			std::cout << e.what() << std::endl;
+			throw;
+		}
+
+        std::cout << "final_pose_skeleton: " << final_pose_skeleton << std::endl;
+
+		temp = torch::squeeze(final_pose_skeleton);
+		std::cout << "temp:" << temp.sizes() << temp << std::endl;
 
 
         rel_rest_pose = rel_rest_pose;
@@ -716,13 +755,68 @@ namespace smpl
         rotate_rest_pose = rotate_rest_pose;
 
 
+		//count the number of children for each joint
+// 			child_indices = []
+// 			for j in range(parents.shape[0]) :
+// 				child = []
+// 				for i in range(1, parents.shape[0]) :
+// 					if parents[i] == j and i not in child :
+//             child.append(i)
+//                 child_indices.append(child)
+
+            std::vector<std::vector<int>> child_indices;
+            for (int j = 0; j < 29; j++)
+            {
+                std::vector<int> child;
+                for (int i = 1; i < 29; i++)
+                {
+                    int nCount = std::count(child.begin(), child.end(), i);
+
+                    if ((parents.index({i}).item() == j) && (nCount <= 0))
+                    {
+                        child.push_back(i);
+                    }
+                }
+                child_indices.push_back(child);
+            }
+
         /*
 		global_orient_mat = batch_get_pelvis_orient_svd(
 		rel_pose_skeleton.clone(), rel_rest_pose.clone(), parents, children, dtype)
         */
+        std::cout << "parents :" << parents << std::endl;
+        std::cout << "children :" << children << std::endl;
 
+        torch::Tensor torglobal_orient_mat = batch_get_pelvis_orient_svd(
+            rel_pose_skeleton.clone(), rel_rest_pose.clone(), parents, children);
+        std::cout << "torglobal_orient_mat:" << torglobal_orient_mat.sizes() << torglobal_orient_mat << std::endl;
 
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        //±¸×¢µÄ´úÂë
 
+        //In C++ you can create a std::vector<Tensor>& tensors and use torch::stack(tensors) instead.
+
+        std::vector<torch::Tensor> tensors;
+        tensors.push_back(torglobal_orient_mat);
+        tensors.push_back(torglobal_orient_mat);
+        tensors.push_back(torglobal_orient_mat);
+
+        torch::Tensor rot_mats = torch::stack(tensors, 1);
+        std::cout << "rot_mats:" << rot_mats.sizes() << rot_mats << std::endl;
+		
+        
 
 
 
@@ -735,6 +829,122 @@ namespace smpl
 
 
     }
+
+    torch::Tensor LinearBlendSkinning::batch_get_pelvis_orient_svd(
+        const torch::Tensor& rel_pose_skeleton,
+        const torch::Tensor& rel_rest_pose,
+        const torch::Tensor& parents,
+        const torch::Tensor& children
+        //dtype
+    )
+    {
+        //pelvis_child = [int(children[0])]
+        //std::cout << children.sizes() << children << children.index({ 0 }) << children.index({ 0 }).item()<<std::endl;
+        //auto pelvis_child = children.index({ 0 }).to(torch::kInt32).item();// .item();
+        //std::cout << children.sizes() << children << children.dtype() << std::endl;
+        //int pelvis_child = int(children.index({Slice(0)}).to(torch::kI32));
+        std::vector<int> pelvis_child;
+        //std::vector<int> child
+        pelvis_child.push_back(1);
+        for (int i = 1; i < 29; i++)
+        {
+            int nCount = std::count(pelvis_child.begin(), pelvis_child.end(), i);
+            if (parents.index({ i }).item() == 0 && nCount <= 0)
+            {
+                pelvis_child.push_back(i);
+            }
+        }
+        /*
+		rest_mat = []
+	    target_mat = []
+	    for child in pelvis_child:
+		rest_mat.append(rel_rest_pose[:, child].clone())
+		target_mat.append(rel_pose_skeleton[:, child].clone())
+        */
+        torch::Tensor temp = torch::squeeze(rel_rest_pose);        
+        std::cout << "rel_rest_pose temp all:" << temp << std::endl;
+
+        torch::Tensor rest_mat = torch::zeros({9});
+        torch::Tensor target_mat = torch::zeros({ 9 });
+        int i = 0;
+        for (std::vector<int>::iterator itr =pelvis_child.begin(); itr != pelvis_child.end(); itr++ )
+        {
+            
+            int child = *itr;
+            //rest_mat.index({ Slice(i * 3, i * 3 + 3) }).print();
+            torch::Tensor temp = rel_rest_pose.index({ Slice(),child }).clone();//.print();
+            temp = torch::squeeze(temp);
+            std::cout << "temp:" << temp << std::endl;
+
+			torch::Tensor temp2 = rel_pose_skeleton.index({ Slice(),child }).clone();
+			temp2 = torch::squeeze(temp2);
+			std::cout << "temp2:" << temp2 << std::endl;
+
+            //std::cout << "rel_rest_pose:" << rel_rest_pose << std::endl;
+            rest_mat.index({ Slice(i * 3, i * 3 + 3) }) = temp;// rel_rest_pose.index({ Slice(),child }).clone();// [:, child] .clone()
+            target_mat.index({ Slice(i * 3, i * 3 + 3) }) = temp2;// rel_rest_pose.index({ Slice(),child }).clone();// [:, child] .clone()
+
+            //rest_mat.print();
+            std::cout << "rest_mat:" << rest_mat << std::endl;
+            std::cout << "target_mat:" << target_mat<< std::endl;
+
+            //rel_rest_pose.index({ Slice(),child }).print();
+            i++;
+        }
+        
+        rest_mat = torch::reshape(rest_mat, {1,3,3 });
+        std::cout << "rest_mat:" << rest_mat.sizes()<< rest_mat << std::endl;
+        target_mat = torch::reshape(target_mat, { 1,3,3 });
+		std::cout << "target_mat:" << target_mat.sizes() << target_mat << std::endl;
+
+
+        //S = rest_mat.bmm(target_mat.transpose(1, 2))
+        torch::Tensor S = rest_mat.bmm(target_mat.transpose(1, 2));
+        std::cout << "S:" << S.sizes() << S << std::endl;
+
+        
+//         mask_zero = S.sum(dim=(1, 2))
+//         torch::Tensor mask_zero = S.sum((1, 2),false);        
+//         std::cout << mask_zero.sizes() << mask_zero << std::endl;
+// 
+//         torch::Tensor mask_zero2 = torch::sum(S, (1, 2),true);
+//         std::cout <<"mask_zero2:" << mask_zero2.sizes() << mask_zero2 << std::endl;
+
+		//device = S_non_zero.device
+        torch::Tensor U, Sigma, V;
+        std::tuple t1;
+        std::tuple<at::Tensor, at::Tensor, at::Tensor> t2;
+		//U, Sigma,
+
+        t2 = torch::svd(S.cpu());
+
+        U = std::get<0>(t2);
+        V = std::get<2>(t2);
+        std::cout << "V:" << V.sizes() << V.device()<<V<< std::endl;
+
+        U = U.to(m__device);
+        V = V.to(m__device);
+        std::cout << "V:" << V.sizes() << V.device() << V << std::endl;
+//		U = U.to(device = device)
+//		V = V.to(device = device)
+
+
+
+        torch::Tensor rot_mat = torch::zeros_like(S);
+        torch::Tensor det_u_v = torch::det(torch::bmm(V, U.transpose(1, 2)));
+        std::cout << "det_u_v:" << det_u_v.sizes() << det_u_v.device() << det_u_v << std::endl;
+
+        torch::Tensor det_modify_mat = torch::eye(3, U.device()).unsqueeze(0);// .expand(U.size(0), -1, -1).clone()
+        std::cout << "det_modify_mat:" << det_modify_mat.sizes() << det_modify_mat.device() << det_modify_mat << std::endl;
+        det_modify_mat.index_put_({ Slice(),2,2 }, det_u_v);// = det_u_v;
+        std::cout << "det_modify_mat:" << det_modify_mat.sizes() << det_modify_mat.device() << det_modify_mat << std::endl;
+
+        //rot_mat_non_zero = torch.bmm(torch.bmm(V, det_modify_mat), U.transpose(1, 2))
+        torch::Tensor rot_mat_non_zero = torch::bmm(torch::bmm(V, det_modify_mat), U.transpose(1, 2));
+        std::cout << "rot_mat_non_zero:" << rot_mat_non_zero.sizes() << rot_mat_non_zero.device() << rot_mat_non_zero << std::endl;
+        return rot_mat_non_zero;
+    }
+
 
 
     torch::Tensor LinearBlendSkinning::vertices2joints(const torch::Tensor& J_regressor, const torch::Tensor& vertices)
@@ -778,12 +988,12 @@ namespace smpl
     {
         std::cout << "LinearBlendSkinning::hybrik" << std::endl;
         batch_size = pose_skeleton.size(0);
-        //device = pose_skeleton.device;
+        torch::Device device = pose_skeleton.device();
 
         // 1. Add shape contribution
         //torch::Tensor result = blend_shapes(betas, shapedirs);
         torch::Tensor v_shaped = v_template + blend_shapes(betas, shapedirs);
-        std::cout << "v_shaped :" << v_shaped.sizes() << std::endl;
+        //std::cout << "v_shaped :" << v_shaped.sizes() << v_shaped<<std::endl;
 
         //rest_J = torch.zeros((v_shaped.shape[0], 29, 3), dtype=dtype, device=device)
         torch::Tensor  rest_J = torch::zeros({ batch_size, 29, 3 });
@@ -799,6 +1009,7 @@ namespace smpl
 //         std::cout << "test_J_part " << test_J_part.sizes() << std::endl;
 
         rest_J.index({ Slice(), Slice(None,24) }) = vertices2joints(J_regressor, v_shaped);
+        rest_J = rest_J.clone().to(m__device);
         std::cout << "test_J " << rest_J.sizes() << rest_J << std::endl;
 
         //leaf_number = [411, 2445, 5905, 3216, 6617]

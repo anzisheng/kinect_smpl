@@ -9,7 +9,7 @@
 #include "smpl/SMPL.h"
 //----------
 #include "iostream"
-
+#include <vector>
 #define COUT_VAR(x) std::cout << #x"=" << x << std::endl;
 #define COUT_ARR(x) std::cout << "---------"<< #x << "---------" << std::endl;\
         std::cout << x << std::endl;\
@@ -64,11 +64,18 @@ SMPL::SMPL() noexcept(true) :
     // parent([-1, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21, 15, 22, 23, 10, 11], device = 'cuda:0')
         //children([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 27, 28, 15, 16, 17, 24, 18, 19, 20, 21, 22, 23, 25, 26, -1, -1, -1, -1, -1], device = 'cuda:0')
 
-    int parent[] = { -1, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21, 15, 22, 23, 10, 11 };
-    m_parents = torch::from_blob(parent, (29));
+    //int parent[]
+    std::vector<int> parent = { -1, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 12, 13, 14, 16, 17, 18, 19, 20, 21, 15, 22, 23, 10, 11 };
+    m_parents = torch::tensor(parent);// .data(), { 29 }).toType(torch::kInt8);
+    std::cout << "m_parents0: " << m_parents << std::endl;
+//     m_parents = m_parents.toType(torch::kInt32);
+//     std::cout << "m_parents1: " << m_parents << std::endl;
+    //m_parents = torch::from_blob(parent, (29));// .toType(torch::kInt8);
 
-    int children[] = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 27, 28, 15, 16, 17, 24, 18, 19, 20, 21, 22, 23, 25, 26, -1, -1, -1, -1, -1 };
-    m_children = torch::from_blob(children, (29));
+
+    std::vector<int> children = { 1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 27, 28, 15, 16, 17, 24, 18, 19, 20, 21, 22, 23, 25, 26, -1, -1, -1, -1, -1 };
+    m_children = torch::tensor(children);
+    std::cout << "children: " << children << std::endl;
 
 
     std::string LEAF_NAMES[] = {"head", "left_middle", "right_middle", "left_bigtoe", "right_bigtoe" };
@@ -290,6 +297,10 @@ void SMPL::setDevice(const torch::Device &device) noexcept(false)
         m__regressor.setDevice(device);
         m__transformer.setDevice(device);
         m__skinner.setDevice(device);
+        m_parents = m_parents.to(device);
+        std::cout << "m_parents:" << m_parents.device() << m_parents.sizes() <<  std::endl << m_parents<<std::endl;
+        m_children = m_children.to(device);
+        std::cout << "m_children:" << m_children.device() << m_children.sizes() << std::endl << m_children << std::endl;
     }
     else {
         throw smpl_error("SMPL", "Failed to fetch device index!");
@@ -918,7 +929,20 @@ void SMPL::hybrik(const torch::Tensor& pose_skeleton, const torch::Tensor& betas
 // 		const torch::Tensor & lbs_weights
 // 	);
 
-    torch::Tensor J_regressor_h36m = torch::zeros((17, 6890));
+    torch::Tensor J_regressor_h36m = torch::zeros({ 17, 6890 });
+    J_regressor_h36m = J_regressor_h36m.to(m__device);
+    std::cout << "J_regressor_h36m:" << J_regressor_h36m.sizes() << J_regressor_h36m.device() << std::endl;
+    //this->m__device
+
+    std::cout << "betas:" << betas.sizes() << betas.device() << std::endl;
+    std::cout << "m__templateRestShape:" << m__templateRestShape.sizes() << m__templateRestShape.device() << std::endl;
+    std::cout << "m__shapeBlendBasis:" << m__shapeBlendBasis.sizes() << m__shapeBlendBasis.device() << std::endl;
+    std::cout << "m__poseBlendBasis:" << m__poseBlendBasis.sizes() << m__poseBlendBasis.device() << std::endl;
+    std::cout << "m__jointRegressor:" << m__jointRegressor.sizes() << m__jointRegressor.device() << std::endl;
+    std::cout << "m__weights:" << m__weights.sizes() << m__weights.device() << std::endl;
+    //std::cout << "m__poseBlendBasis:" << m__poseBlendBasis.sizes() << m__poseBlendBasis.device() << std::endl;
+
+    std::cout << "pose_skeleton:" << pose_skeleton << std::endl;
 
     m__skinner.hybrik(pose_skeleton,
         betas, 

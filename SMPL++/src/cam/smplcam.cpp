@@ -4,14 +4,16 @@ smplcam::smplcam(torch::Device device)
 {
 	m_smpl = nullptr;
 
+
 	//anzs º”‘ÿxyz.npy
 	cnpy::NpyArray arr = cnpy::npy_load("data/xyz.npy");
 	//std::vector<float> scales;
 
 	//pred_xyz_jts_29 = torch.tensor(pred_xyz_jts_29).cuda()
 	//torch::Tensor pred_xyz_jts_29;
-	m_pred_xyz_jts_29 = torch::from_blob(arr.data<double>(), { 1,29,3 }).to(device);
-	//cout << "xyz:" << endl << pred_xyz_jts_29 << endl;
+	
+	m_pred_xyz_jts_29 = torch::from_blob(arr.data<float>(), { 1,29,3 }).to(device);
+	std::cout << "xyz:" << m_pred_xyz_jts_29.device() << m_pred_xyz_jts_29<< std::endl; //<< m_pred_xyz_jts_29 << std::endl;
 	
 	cnpy::NpyArray arrshape = cnpy::npy_load("data/shape.npy");
 	m_pred_shape = torch::from_blob(arrshape.data<float>(), { 1,10 }).to(device);
@@ -22,6 +24,9 @@ smplcam::smplcam(torch::Device device)
 
 void smplcam::call_forward(/*const torch::Tensor& xyz, const torch::Tensor& shape*/)
 {
+	
+	m_pred_xyz_jts_29 = m_pred_xyz_jts_29 * 2.2;
+	std::cout << "pose_skeleton:" << m_pred_xyz_jts_29 << std::endl;
 	m_smpl->hybrik(m_pred_xyz_jts_29, m_pred_shape);
 
 

@@ -792,7 +792,7 @@ namespace smpl
 
         torch::Tensor global_orient_mat = batch_get_pelvis_orient_svd(
             rel_pose_skeleton.clone(), rel_rest_pose.clone(), parents, children);
-        std::cout << "torglobal_orient_mat:" << torglobal_orient_mat.sizes() << torglobal_orient_mat << std::endl;
+        std::cout << "torglobal_orient_mat:" << global_orient_mat.sizes() << global_orient_mat << std::endl;
 
         
         
@@ -814,11 +814,69 @@ namespace smpl
 
 
         std::vector<torch::Tensor> rot_mat_chain;
-        std::vector<torch::Tensor> rot_mat_chain;
+        std::vector<torch::Tensor> rot_mat_local;
 
         rot_mat_chain.push_back(global_orient_mat);
-        rot_mat_chain.push_back(global_orient_mat);
+        rot_mat_local.push_back(global_orient_mat);
 
+
+        //for i in range(1, parents.shape[0]) :
+        for (int i = 1; i < parents.size(0); i++)
+        {
+            /*
+		if children[i] == -1:
+			# leaf nodes
+			if leaf_thetas is not None:
+				rot_mat = leaf_rot_mats[:, leaf_cnt, :, :]
+				leaf_cnt += 1
+
+				rotate_rest_pose[:, i] = rotate_rest_pose[:, parents[i]] + torch.matmul(
+					rot_mat_chain[parents[i]],
+					rel_rest_pose[:, i]
+				)
+
+				rot_mat_chain.append(torch.matmul(
+					rot_mat_chain[parents[i]],
+					rot_mat))
+				rot_mat_local.append(rot_mat)
+		elif len(child_indices[i]) == 3: #children[i] == -3:
+
+            */
+            std::cout << parents.size(0) << children.index({ i }).item();
+            if(children.index({ i }).item() == -1)
+            {
+
+            }
+            else if (child_indices[i].size() == 3)//: #children[i] == -3)
+            {
+                //只有当i =9,时child_indices[9]才是3，此处硬编码，此时parents[i] 为6
+				// three children
+// 				rotate_rest_pose[:, i] = rotate_rest_pose[:, parents[i]] + torch.matmul(
+// 					rot_mat_chain[parents[i]],
+// 					rel_rest_pose[:, i]
+// 				)
+                std::cout << "rotate_rest_pose[:,0]:" << rotate_rest_pose.sizes() << rotate_rest_pose.index({ Slice(),12,Slice(),Slice() }) << std::endl;
+                //int ii = int(std::move(parents.index({ 0 }).item()));
+
+                //此步等等i = 9,再测试，因为到时rot_mat_chain的元素个数才够[6]。
+                rotate_rest_pose.index({ Slice(),i }) = rotate_rest_pose.index({ Slice(), 6 }) + torch::matmul(rot_mat_chain[6], rel_rest_pose.index({ Slice(),9 }));// [:, i] );// [, parents[i]]
+                std::cout << "rotate_rest_pose.index({ Slice(),i }):" << rotate_rest_pose.index({ Slice(),i }).sizes() << rotate_rest_pose.index({ Slice(),i }) << std::endl;
+                // ....
+            }
+            else if (child_indices[i].size() == 1)
+            {
+                //大部分都执行此条件。
+				//only one child
+// 				child = child_indices[i][0]
+                int child = child_indices[i][0];
+
+                torch::Tensor child_rest_loc = rel_rest_pose.index({ Slice(),child });// [:, child]
+                std::cout << "child_rest_loc " << child_rest_loc << std::endl;
+                torch::Tensor child_final_loc = rel_pose_skeleton.index({ Slice, child });// [:, child]
+                std::cout << "child_final_loc " << child_final_loc << std::endl;
+
+            }
+        }
 
 		
         

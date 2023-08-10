@@ -346,7 +346,7 @@ int main(int argc, char const* argv[])
 	device.set_index(0);
 
 
-	std::string modelPath = "data/SMPL_FEMALE.npz";
+	std::string modelPath = "data/basicModel_neutral_lbs_10_207_0_v1.0.0.npz";
 
 	smplcam* p_smplcam = new smplcam(device);
 

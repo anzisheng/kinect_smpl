@@ -600,24 +600,25 @@ namespace smpl
 			// i.e.Multiply each shape displacement by its corresponding beta and
 			// then sum them.
 
-        std::cout << "betas shape:" << betas.sizes() << std::endl;
-        std::cout << "shape_disps shape:" << shape_disps.sizes() << std::endl;
+        std::cout << "betas shape:" << betas<< std::endl;
+        std::cout << "shape_disps[-1,:,-1]:" << shape_disps.index({-1, Slice(),-1}) << std::endl;
+        //print("shape_disps[-1,:,-1]", shape_disps[-1, :, -1])
+        //std::cout << "blend_shape shape:" << blend_shape.sizes() << std::endl;
 
-        torch::Tensor blend_shape;
-        std::cout << "blend_shape shape:" << blend_shape.sizes() << std::endl;
+        torch::Tensor blend_shape;        
         try
         {
             //at::TensorList t = { betas, shape_disps };
             blend_shape = torch::einsum("bl, mkl->bmk", { betas, shape_disps });
-            std::cout << "blend_shape shape:" << blend_shape.sizes() << std::endl;
+            
         }
 		catch (std::exception& e)
 		{
             std::cout << e.what() << std::endl;
 			throw;
 		}
-        
-        
+        //print("blend_shape[£º,-1,:]", blend_shape[:, -1, :])
+        std::cout << "blend_shape shape[£º,-1,:]:" << blend_shape.index({ Slice(), -1, Slice()}) << std::endl;
         return blend_shape;
 
     }
@@ -746,7 +747,9 @@ namespace smpl
         std::cout << "final_pose_skeleton: " << final_pose_skeleton << std::endl;
 
 		temp = torch::squeeze(final_pose_skeleton);
-		std::cout << "temp:" << temp.sizes() << temp << std::endl;
+        std::cout << "temp[[3]]:" << temp.sizes() << temp.index({ 3,Slice()}) << std::endl;
+        std::cout << "temp[[13]]:" << temp.sizes() << temp.index({ 13,Slice() }) << std::endl;
+        std::cout << "temp[[26]]:" << temp.sizes() << temp.index({ 26,Slice() }) << std::endl;
 
 
         rel_rest_pose = rel_rest_pose;
@@ -787,19 +790,10 @@ namespace smpl
         std::cout << "parents :" << parents << std::endl;
         std::cout << "children :" << children << std::endl;
 
-        torch::Tensor torglobal_orient_mat = batch_get_pelvis_orient_svd(
+        torch::Tensor global_orient_mat = batch_get_pelvis_orient_svd(
             rel_pose_skeleton.clone(), rel_rest_pose.clone(), parents, children);
         std::cout << "torglobal_orient_mat:" << torglobal_orient_mat.sizes() << torglobal_orient_mat << std::endl;
 
-        
-        
-        
-        
-        
-        
-        
-        
-        
         
         
         
@@ -808,13 +802,24 @@ namespace smpl
 
         //In C++ you can create a std::vector<Tensor>& tensors and use torch::stack(tensors) instead.
 
-        std::vector<torch::Tensor> tensors;
-        tensors.push_back(torglobal_orient_mat);
-        tensors.push_back(torglobal_orient_mat);
-        tensors.push_back(torglobal_orient_mat);
+//         std::vector<torch::Tensor> tensors;
+//         tensors.push_back(torglobal_orient_mat);
+//         tensors.push_back(torglobal_orient_mat);
+//         tensors.push_back(torglobal_orient_mat);
 
-        torch::Tensor rot_mats = torch::stack(tensors, 1);
-        std::cout << "rot_mats:" << rot_mats.sizes() << rot_mats << std::endl;
+//         torch::Tensor rot_mats = torch::stack(tensors, 1);
+//         std::cout << "rot_mats:" << rot_mats.sizes() << rot_mats << std::endl;
+		   //rot_mat_chain = [global_orient_mat]
+		   //rot_mat_local = [global_orient_mat]
+
+
+        std::vector<torch::Tensor> rot_mat_chain;
+        std::vector<torch::Tensor> rot_mat_chain;
+
+        rot_mat_chain.push_back(global_orient_mat);
+        rot_mat_chain.push_back(global_orient_mat);
+
+
 		
         
 
@@ -823,9 +828,6 @@ namespace smpl
 
 
         return rel_rest_pose;//temperary
-
-
-
 
 
     }
@@ -892,9 +894,13 @@ namespace smpl
             i++;
         }
         
-        rest_mat = torch::reshape(rest_mat, {1,3,3 });
+        rest_mat = torch::reshape(rest_mat, { 1,3,3 });// .transpose(0, 1);
+        rest_mat = torch::squeeze(rest_mat).transpose(0,1);
+        rest_mat = torch::unsqueeze(rest_mat, 0);
         std::cout << "rest_mat:" << rest_mat.sizes()<< rest_mat << std::endl;
         target_mat = torch::reshape(target_mat, { 1,3,3 });
+        target_mat = torch::squeeze(target_mat).transpose(0, 1);
+        target_mat = torch::unsqueeze(target_mat, 0);
 		std::cout << "target_mat:" << target_mat.sizes() << target_mat << std::endl;
 
 
@@ -993,7 +999,9 @@ namespace smpl
         // 1. Add shape contribution
         //torch::Tensor result = blend_shapes(betas, shapedirs);
         torch::Tensor v_shaped = v_template + blend_shapes(betas, shapedirs);
-        //std::cout << "v_shaped :" << v_shaped.sizes() << v_shaped<<std::endl;
+        //std::cout << "v_template :" << v_template.sizes() << v_template <<std::endl;
+        std::cout << "[-1,-1,:] :" << v_shaped.sizes() << v_shaped.index({-1, -1, Slice()}) << std::endl;
+        //print("v_shaped[-1,-1,:]", v_shaped[-1,-1,:])
 
         //rest_J = torch.zeros((v_shaped.shape[0], 29, 3), dtype=dtype, device=device)
         torch::Tensor  rest_J = torch::zeros({ batch_size, 29, 3 });
@@ -1010,7 +1018,8 @@ namespace smpl
 
         rest_J.index({ Slice(), Slice(None,24) }) = vertices2joints(J_regressor, v_shaped);
         rest_J = rest_J.clone().to(m__device);
-        std::cout << "test_J " << rest_J.sizes() << rest_J << std::endl;
+        std::cout << "test_J[0,22,:] " << rest_J.sizes() << rest_J.index({0, 22,Slice()}) << std::endl;
+        //print('rest_J[0,[9,19],:]', rest_J[0,[9,19],:])
 
         //leaf_number = [411, 2445, 5905, 3216, 6617]
 // 		std::vector<int> v = { 411, 2445, 5905, 3216, 6617 };
@@ -1028,8 +1037,8 @@ namespace smpl
         //rest_J[:, 24:] = leaf_vertices
         rest_J.index({ Slice(), Slice(24,None) }) = leaf_vertices;
         std::cout << "test_J " << rest_J.sizes() << rest_J<< std::endl;
-
-
+        //std::cout << "test_J[0,[9,19],:] " << rest_J.sizes() << rest_J.index({ 0, Slice(9,19),Slice() }) << std::endl;
+        std::cout << "test_J[0,26,:] " << rest_J.sizes() << rest_J.index({ 0, 26,Slice() }) << std::endl;
 
         //# 3. Get the rotation matrics
         torch::Tensor rot_mats = batch_inverse_kinematics_transform(

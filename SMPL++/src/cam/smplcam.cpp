@@ -17,6 +17,7 @@ smplcam::smplcam(torch::Device device)
 	
 	cnpy::NpyArray arrshape = cnpy::npy_load("data/shape.npy");
 	m_pred_shape = torch::from_blob(arrshape.data<float>(), { 1,10 }).to(device);
+	
 
 	//m_pred_shape;
 
@@ -27,6 +28,7 @@ void smplcam::call_forward(/*const torch::Tensor& xyz, const torch::Tensor& shap
 	
 	m_pred_xyz_jts_29 = m_pred_xyz_jts_29 * 2.2;
 	std::cout << "pose_skeleton:" << m_pred_xyz_jts_29 << std::endl;
+	std::cout << "m_pred_shape:" << m_pred_shape << std::endl;
 	m_smpl->hybrik(m_pred_xyz_jts_29, m_pred_shape);
 
 

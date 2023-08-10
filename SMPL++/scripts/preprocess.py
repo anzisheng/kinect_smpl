@@ -41,7 +41,7 @@ def main(args):
 
     """
     #modelName="MANO_left"
-    modelName="SMPL_FEMALE"
+    modelName="basicModel_neutral_lbs_10_207_0_v1.0.0"
     raw_model_path = modelName+'.pkl'
     save_dir = 'result'
 

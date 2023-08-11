@@ -77,6 +77,7 @@
 #define FACE_INDEX_NUM smpl::face_index_num
 #endif // FACE_INDEX_NUM
 
+#define SHOWOUT true
 //===== INCLUDES ==============================================================
 
 #include <stdlib.h>

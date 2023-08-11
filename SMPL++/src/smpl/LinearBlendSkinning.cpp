@@ -37,6 +37,9 @@
 #include "torch/script.h"
 using namespace torch::indexing;
 #include <exception>
+#include <opencv2/opencv.hpp>
+using namespace std;
+using namespace cv;
 //----------
 #define COUT_VAR(x) std::cout << #x"=" << x << std::endl;
 #define COUT_ARR(x) std::cout << "---------"#x"---------" << std::endl;\
@@ -792,6 +795,7 @@ namespace smpl
 
         torch::Tensor global_orient_mat = batch_get_pelvis_orient_svd(
             rel_pose_skeleton.clone(), rel_rest_pose.clone(), parents, children);
+        //global_orient_mat = global_orient_mat.to(torch::kFloat64);
         std::cout << "torglobal_orient_mat:" << global_orient_mat.sizes() << global_orient_mat << std::endl;
 
         
@@ -816,7 +820,7 @@ namespace smpl
         std::vector<torch::Tensor> rot_mat_chain;
         std::vector<torch::Tensor> rot_mat_local;
 
-        rot_mat_chain.push_back(global_orient_mat);
+        rot_mat_chain.push_back(global_orient_mat.to(torch::kFloat64));
         rot_mat_local.push_back(global_orient_mat);
 
 
@@ -855,13 +859,65 @@ namespace smpl
 // 					rot_mat_chain[parents[i]],
 // 					rel_rest_pose[:, i]
 // 				)
-                std::cout << "rotate_rest_pose[:,0]:" << rotate_rest_pose.sizes() << rotate_rest_pose.index({ Slice(),12,Slice(),Slice() }) << std::endl;
-                //int ii = int(std::move(parents.index({ 0 }).item()));
+                std::cout << "rotate_rest_pose[:,0]:" << rotate_rest_pose.sizes() << rotate_rest_pose.index({ Slice(),0,Slice(),Slice() }) << std::endl;
+                rotate_rest_pose = rotate_rest_pose.to(torch::kFloat64);
+
+                std::cout << "rot_mat_chain[6]:" << rot_mat_chain[6].type()  << std::endl;
+                rel_rest_pose = rel_rest_pose.to(torch::kFloat64);
+                std::cout << "rel_rest_pose.index({ Slice(),9 }):" << rel_rest_pose.index({ Slice(),9 }).type() << std::endl;
 
                 //此步等等i = 9,再测试，因为到时rot_mat_chain的元素个数才够[6]。
-                rotate_rest_pose.index({ Slice(),i }) = rotate_rest_pose.index({ Slice(), 6 }) + torch::matmul(rot_mat_chain[6], rel_rest_pose.index({ Slice(),9 }));// [:, i] );// [, parents[i]]
+                try 
+                {
+                    rotate_rest_pose.index({ Slice(),i }) = rotate_rest_pose.index({ Slice(), 6 }) + torch::matmul(rot_mat_chain[6], rel_rest_pose.index({ Slice(),9 }));// [:, i] );// [, parents[i]]
+                }
+				catch (std::exception& e)
+				{
+					std::cout << e.what() << std::endl;
+					throw;
+				}
+
                 std::cout << "rotate_rest_pose.index({ Slice(),i }):" << rotate_rest_pose.index({ Slice(),i }).sizes() << rotate_rest_pose.index({ Slice(),i }) << std::endl;
-                // ....
+                
+
+                /*
+				*spine_child = []
+			for c in range(1, parents.shape[0]):
+				if parents[c] == i and c not in spine_child:
+					spine_child.append(c)
+
+                */
+                std::vector<int> spine_child = { 12, 13, 14 };
+
+// 				children_final_loc = []
+// 				children_rest_loc = []
+
+                std::vector<torch::Tensor> children_final_loc;
+                std::vector<torch::Tensor> children_rest_loc;
+
+// 				for c in spine_child :
+// 				temp = final_pose_skeleton[:, c] - rotate_rest_pose[:, i]
+// 					children_final_loc.append(temp) 
+// 					children_rest_loc.append(rel_rest_pose[:, c].clone())
+
+                for (std::vector<int>::iterator iter = spine_child.begin(); iter != spine_child.end(); iter++)
+                {
+                    int c = *iter;
+
+                    torch::Tensor temp = final_pose_skeleton.index({ Slice(), c }) - rotate_rest_pose.index({ Slice(), i });
+                    children_final_loc.push_back(temp);// append()
+                    children_rest_loc.push_back(rel_rest_pose.index({ Slice(), c }).clone()); // [:, c] .clone())
+
+                }
+
+// 				rot_mat = batch_get_3children_orient_svd(
+// 					children_final_loc, children_rest_loc,
+// 					rot_mat_chain[parents[i]], spine_child, dtype)
+
+
+
+
+
             }
             else if (child_indices[i].size() == 1)
             {
@@ -871,9 +927,133 @@ namespace smpl
                 int child = child_indices[i][0];
 
                 torch::Tensor child_rest_loc = rel_rest_pose.index({ Slice(),child });// [:, child]
+                child_rest_loc = child_rest_loc.to(torch::kFloat64);
                 std::cout << "child_rest_loc " << child_rest_loc << std::endl;
-                torch::Tensor child_final_loc = rel_pose_skeleton.index({ Slice, child });// [:, child]
+                torch::Tensor child_final_loc = rel_pose_skeleton.index({ Slice(), child});// [:, child]
                 std::cout << "child_final_loc " << child_final_loc << std::endl;
+                child_final_loc = child_final_loc.to(torch::kFloat64);
+                /*
+				*child_final_loc = torch.matmul(
+				rot_mat_chain[parents[i]].transpose(1, 2),
+				child_final_loc)
+                */
+                auto ind = parents.index({i}).to(torch::kInt32).item(); 
+                int in = ind.toInt();
+                try
+                {
+                    child_final_loc = torch::matmul(rot_mat_chain[in].transpose(1, 2),
+                        child_final_loc);
+                    std::cout << "child_final_loc " << child_final_loc << std::endl;
+                }
+				catch (std::exception& e)
+				{
+					std::cout << e.what() << std::endl;
+					throw;
+				}
+
+                //child_final_norm = torch.norm(child_final_loc, dim = 1, keepdim = True)
+                torch::Tensor child_final_norm = torch::norm(child_final_loc, 2, 1, true);
+                std::cout << "child_final_norm " << child_final_norm << std::endl;
+                //child_rest_norm = torch.norm(child_rest_loc, dim=1, keepdim=True)
+                torch::Tensor  child_rest_norm = torch::norm(child_rest_loc, 2, 1, true);
+                std::cout << "child_rest_norm " << child_rest_norm << std::endl;
+
+
+                //axis = torch.cross(child_rest_loc, child_final_loc, dim=1)
+                torch::Tensor axis = torch::cross(child_rest_loc, child_final_loc, 1);
+                std::cout << "axis" << axis << std::endl;
+
+                //axis_norm = torch.norm(axis, dim=1, keepdim=True)
+                torch::Tensor axis_norm = torch::norm(axis,2, 1,true);
+                std::cout << "axis_norm" << axis_norm << std::endl;
+
+                //temp = torch.sum(child_rest_loc * child_final_loc, dim=1, keepdim=True)
+                torch::Tensor temp = torch::sum(child_rest_loc * child_final_loc, 1, true);
+                std::cout << "temp" << temp << std::endl;
+
+
+                torch::Tensor angle = torch::acos(temp / (child_rest_norm * child_final_norm));
+                if(SHOWOUT)
+                { 
+                    std::cout << "angle" << angle << std::endl;
+                }
+
+				//axis = axis / (axis_norm + 1e-8)
+				//aa = angle * axis
+                axis = axis / (axis_norm + 1e-8);
+                torch::Tensor aa = angle * axis;
+				if (SHOWOUT)
+				{
+					std::cout << "aa" << aa << std::endl;
+				}
+                torch::Tensor tt = torch::squeeze(aa);
+				if (SHOWOUT)
+				{
+					std::cout << "tt: " << tt << std::endl;
+				}
+                auto x = tt.index({ 0 }).to(torch::kFloat64).item();
+                float xx = x.toFloat();
+				auto y = tt.index({ 1 }).to(torch::kFloat64).item();
+				float yy = y.toFloat();
+				auto z = tt.index({ 2 }).to(torch::kFloat64).item();
+				float zz = z.toFloat();
+
+				Mat src = (Mat_<double>(3, 1) << xx, yy, zz);
+                std::cout << src << std::endl;
+                //rot_mat = cv2.Rodrigues(aa.detach().cpu().numpy())[0]
+                
+				//Mat auxRinv = Mat::eye(3, 3, CV_32F);
+				//Rodrigues(Rc1, auxRinv);
+                //rot_mat = cv.Rodrigues(aa.detach().cpu().numpy())[0]
+                cv::Mat dst;
+                cv::Rodrigues(src, dst);
+                std::cout << dst << std::endl;
+                torch::Tensor rot_mat = torch::from_blob(dst.data, { 3, 3 }, torch::kFloat64);
+                std::cout << "rot_mat: " << rot_mat.sizes() << rot_mat << std::endl;
+
+                rot_mat = rot_mat.to(m__device);
+                rot_mat = torch::unsqueeze(rot_mat,0);
+                if (SHOWOUT)
+                {
+                    std::cout << "rot_mat: " << rot_mat.sizes() << rot_mat << std::endl;
+
+                }
+                /*
+				*rot_mat_chain.append(
+				torch.matmul(
+					rot_mat_chain[parents[i]],
+					rot_mat)
+			)
+			rot_mat_local.append(rot_mat)
+
+                */
+                in = parents.index({ i }).to(torch::kInt32).item().toInt();
+                if (SHOWOUT)
+                {
+                    torch::Tensor tempp = rot_mat_chain[in];
+
+                    std::cout << "rot_mat_chain[in]" << rot_mat_chain[in] << std::endl;
+                }
+                torch::Tensor result;
+                try
+                {
+                    /*torch::Tensor*/ result = torch::matmul(rot_mat_chain[in].to(torch::kFloat64), rot_mat);
+					if (SHOWOUT)
+					{
+						//torch::Tensor tempp = rot_mat_chain[in];
+						std::cout << "result" << result << std::endl;
+					}
+                }
+                catch (std::exception& e)
+                {
+                    std::cout << e.what() << std::endl;
+                    throw;
+                }
+
+				
+                
+                rot_mat_chain.push_back(result);
+                rot_mat_local.push_back(rot_mat);                
 
             }
         }
@@ -1034,6 +1214,51 @@ namespace smpl
 // 
 // 		return torch.einsum('bik,ji->bjk', [vertices, J_regressor])
 // 
+    torch::Tensor LinearBlendSkinning::batch_get_3children_orient_svd(
+        std::vector<torch::Tensor> rel_pose_skeleton,
+        std::vector<torch::Tensor> rel_rest_pose,
+        torch::Tensor rot_mat_chain_parent,
+        std::vector<int> children_list)
+    {
+// 		rest_mat = []
+// 		target_mat = []
+        std::vector<torch::Tensor> rest_mat;
+        std::vector<torch::Tensor> target_mat;
+
+// 		for c, child in enumerate(children_list) :
+// 			if isinstance(rel_pose_skeleton, list) :
+// 				target = rel_pose_skeleton[c].clone()
+// 				template = rel_rest_pose[c].clone()
+// 			else :
+// 				target = rel_pose_skeleton[:, child].clone()
+// 				template = rel_rest_pose[:, child].clone()
+// 
+// 				target = torch.matmul(
+// 					rot_mat_chain_parent.transpose(1, 2),
+// 					target)
+// 
+// 				target_mat.append(target)
+// 				rest_mat.append(template)
+
+        int c = 0;
+        for (std::vector<int>::iterator iter = children_list.begin(); iter != children_list.end(); iter++)
+        {
+            int child = *iter;
+// 			target = rel_pose_skeleton[c].clone()
+// 				template = rel_rest_pose[c].clone()
+            torch::Tensor target = rel_pose_skeleton[c].clone();
+            torch::Tensor templates = rel_rest_pose[c].clone();
+
+            target = torch::matmul(
+                rot_mat_chain_parent.transpose(1, 2), target);
+            //std::cout << rot_mat_chain_parent.
+
+
+        }
+
+        torch::Tensor rot_mat;
+
+    }
 
 
     void LinearBlendSkinning::hybrik(

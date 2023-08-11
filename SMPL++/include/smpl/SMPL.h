@@ -47,6 +47,7 @@
 #define SHOW_IMG(x) cv::namedWindow(#x);cv::imshow(#x,x);cv::waitKey(20);
 
 namespace smpl {
+#define SHOW_OUT true
 
 //===== INTERNAL MACROS =======================================================
 

@@ -40,6 +40,7 @@
 
 namespace smpl {
 
+
 //===== INTERNAL MACROS =======================================================
 
 
@@ -300,6 +301,11 @@ public: // PUBLIC METHODS
 		//dtype
 	);
 
+	torch::Tensor batch_get_3children_orient_svd(
+		std::vector<torch::Tensor> rel_pose_skeleton,
+		std::vector<torch::Tensor> rel_rest_pose,
+		torch::Tensor rot_mat_chain_parent,
+		std::vector<int> children_list);
 
 };
 

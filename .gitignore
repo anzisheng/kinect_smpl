@@ -102,6 +102,7 @@ _deps
 *.pdf
 build/
 .git00/
+*.rar
 
 
 # CMake

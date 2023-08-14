@@ -1252,9 +1252,37 @@ namespace smpl
             target = torch::matmul(
                 rot_mat_chain_parent.transpose(1, 2), target);
             //std::cout << rot_mat_chain_parent.
-
-
+            target_mat.push_back(target);
+            rest_mat.push_back(templates);
         }
+
+// 		rest_mat = torch.cat(rest_mat, dim = 2)
+        rest_mat = torch::cat(rest_mat,2);
+        //rest_mat = torch::stack(rest_mat, 1)
+        
+        target_mat = torch::cat(target_mat, 2);
+         
+        torch::Tensor S = rest_mat.bmm(target_mat.transpose(1, 2));
+
+        /*
+		*     device = S.device
+	        U, _, V = torch.svd(S.cpu())
+	        U = U.to(device=device)
+	        V = V.to(device=device)
+        */
+
+        /*
+        * 
+		*     # rot_mat = torch.bmm(V, U.transpose(1, 2))
+	det_u_v = torch.det(torch.bmm(V, U.transpose(1, 2)))
+	det_modify_mat = torch.eye(3, device=U.device).unsqueeze(0).expand(U.shape[0], -1, -1).clone()
+	det_modify_mat[:, 2, 2] = det_u_v
+	rot_mat = torch.bmm(torch.bmm(V, det_modify_mat), U.transpose(1, 2))
+
+        */
+
+
+
 
         torch::Tensor rot_mat;
 

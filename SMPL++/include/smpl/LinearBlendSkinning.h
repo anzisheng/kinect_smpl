@@ -306,6 +306,9 @@ public: // PUBLIC METHODS
 		std::vector<torch::Tensor> rel_rest_pose,
 		torch::Tensor rot_mat_chain_parent,
 		std::vector<int> children_list);
+	torch::Tensor rotation_matrix_to_quaternion(torch::Tensor& rotation_matrix, double eps = 0.000001);
+	torch::Tensor rotmat_to_quat(torch::Tensor& rotation_matrix);
+	torch::Tensor quaternion_to_angle_axis(torch::Tensor& quaternion);
 
 };
 

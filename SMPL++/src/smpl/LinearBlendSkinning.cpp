@@ -30,6 +30,7 @@
  //===== INCLUDES ==============================================================
 
  //----------
+#include <chrono>
 #include "definition/def.h"
 #include "toolbox/Exception.h"
 #include "toolbox/TorchEx.hpp"
@@ -1507,7 +1508,8 @@ namespace smpl
 
     }
 
-
+    using ms = std::chrono::milliseconds;
+    using clk = std::chrono::system_clock;
     void LinearBlendSkinning::hybrik(
         const torch::Tensor& pose_skeleton,
         const torch::Tensor& betas,
@@ -1525,7 +1527,8 @@ namespace smpl
         std::cout << "LinearBlendSkinning::hybrik" << std::endl;
         batch_size = pose_skeleton.size(0);
         torch::Device device = pose_skeleton.device();
-
+        auto begin0 = clk::now();
+		
         // 1. Add shape contribution
         //torch::Tensor result = blend_shapes(betas, shapedirs);
         torch::Tensor v_shaped = v_template + blend_shapes(betas, shapedirs);
@@ -1576,6 +1579,7 @@ namespace smpl
             rest_J.clone(), children, parents//, dtype = dtype, train = train,
             //leaf_thetas = leaf_thetas
         );
+
         /*
                 quat = output.rot_mats.reshape(-1, 4)
         aa = quaternion_to_angle_axis(quat)
@@ -1594,7 +1598,34 @@ namespace smpl
         quat = quaternion_to_angle_axis(quat);
         std::cout << "quat2" << quat << std::endl;
         quat = quat.reshape(72);
-        std::cout << "quat3" << quat << std::endl;        
+        std::cout << "quat3" << quat << std::endl;   
+		auto end0 = clk::now();
+		auto duration = std::chrono::duration_cast<ms>(end0 - begin0);
+        std::cout << "Time duration to load SMPL: " << (double)duration.count()  << " ms" << std::endl;
+
+
+        //torch::save()
+		  // print tensor ´òÓ¡Ç°20 ¸ö
+		//torch::Tensor grad_bottom_tensor
+        quat = quat.to(torch::kCPU);
+        ofstream  myfile("double.txt");
+        double* ptr = (double*)quat.data_ptr();
+		for (size_t i = 0; i < 72; i++) {
+            try
+            {
+                //std::cout << *((ptr + i)) << std::endl;
+                myfile << *((ptr + i));
+                myfile << ", ";
+
+            }
+            catch (const std::exception& e)
+            {
+                std::cout << e.what() << std::endl;
+                throw;
+            }
+			
+		}
+        myfile.close();
 
     }
 

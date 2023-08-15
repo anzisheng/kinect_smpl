@@ -12,7 +12,7 @@
 // -------------------
 // zlib
 // -------------------
-#include "zlib/zlib.h"
+
 #if defined(MSDOS) || defined(OS2) || defined(WIN32) || defined(__CYGWIN__)
 #include <fcntl.h>
 #include <io.h>

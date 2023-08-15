@@ -931,19 +931,25 @@ void SMPL::hybrik(const torch::Tensor& pose_skeleton, const torch::Tensor& betas
 
     torch::Tensor J_regressor_h36m = torch::zeros({ 17, 6890 });
     J_regressor_h36m = J_regressor_h36m.to(m__device);
-    std::cout << "J_regressor_h36m:" << J_regressor_h36m.sizes() << J_regressor_h36m.device() << std::endl;
+
+    if (SHOWOUT)
+    {
+        std::cout << "J_regressor_h36m:" << J_regressor_h36m.sizes() << J_regressor_h36m.device() << std::endl;
+    }
+    
     //this->m__device
+    if(SHOWOUT)
+    {
+        std::cout << "betas:" << betas.sizes() << betas.device() << std::endl;
+        std::cout << "m__templateRestShape:" << m__templateRestShape.sizes() << m__templateRestShape.device() << std::endl;
+        std::cout << "m__shapeBlendBasis:" << m__shapeBlendBasis.sizes() << m__shapeBlendBasis.device() << std::endl;
+        std::cout << "m__poseBlendBasis:" << m__poseBlendBasis.sizes() << m__poseBlendBasis.device() << std::endl;
+        std::cout << "m__jointRegressor:" << m__jointRegressor.sizes() << m__jointRegressor.device() << std::endl;
+        std::cout << "m__weights:" << m__weights.sizes() << m__weights.device() << std::endl;
+        //std::cout << "m__poseBlendBasis:" << m__poseBlendBasis.sizes() << m__poseBlendBasis.device() << std::endl;
 
-    std::cout << "betas:" << betas.sizes() << betas.device() << std::endl;
-    std::cout << "m__templateRestShape:" << m__templateRestShape.sizes() << m__templateRestShape.device() << std::endl;
-    std::cout << "m__shapeBlendBasis:" << m__shapeBlendBasis.sizes() << m__shapeBlendBasis.device() << std::endl;
-    std::cout << "m__poseBlendBasis:" << m__poseBlendBasis.sizes() << m__poseBlendBasis.device() << std::endl;
-    std::cout << "m__jointRegressor:" << m__jointRegressor.sizes() << m__jointRegressor.device() << std::endl;
-    std::cout << "m__weights:" << m__weights.sizes() << m__weights.device() << std::endl;
-    //std::cout << "m__poseBlendBasis:" << m__poseBlendBasis.sizes() << m__poseBlendBasis.device() << std::endl;
-
-    std::cout << "pose_skeleton:" << pose_skeleton << std::endl;
-
+        std::cout << "pose_skeleton:" << pose_skeleton << std::endl;
+    }
     m__skinner.hybrik(pose_skeleton,
         betas, 
         m__templateRestShape, 

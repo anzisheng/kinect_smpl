@@ -2012,14 +2012,27 @@ namespace smpl
 		auto duration = std::chrono::duration_cast<ms>(end0 - begin0);
         std::cout << "Time duration to compute pose: " << (double)duration.count()  << " ms" << std::endl;
 
+        std::vector<person*>  g_persons;
         int id = 0;
         torch::Tensor Rh = torch::tensor({ 1.0f, 1.0f, 1.0f });
         torch::Tensor Th = torch::tensor({ 0.3, 0.3, 0.3 });
         torch::Tensor shapes = torch::zeros({10});
         quat = quat.to(torch::kCPU);
-        std::vector<person*>  g_persons;
         person* p = new person(id, Rh, Th,quat,shapes);
         g_persons.push_back(p);
+
+		 id = 1;
+		/*torch::Tensor*/ Rh = torch::tensor({ 0.5f, 0.5f, 0.7f });
+		/*torch::Tensor*/ Th = torch::tensor({ 0.8, 0.9, 0.2 });
+		/*torch::Tensor*/ shapes = torch::zeros({ 10 });
+		quat = quat.to(torch::kCPU);
+		person* p2 = new person(id, Rh, Th, quat, shapes);
+		g_persons.push_back(p2);
+
+
+
+
+        
 
         ofstream myfile2("data/000000.json");
         write_persons(g_persons, myfile2);

@@ -32,7 +32,9 @@
 //===== INCLUDES ==============================================================
 
 #include <torch/torch.h>
-
+#include <fstream>
+#include <iostream>
+//using namespace std;
 //===== EXTERNAL FORWARD DECLARATIONS =========================================
 
 
@@ -145,6 +147,17 @@ namespace smpl {
  * 
  * 
  */
+struct person 
+{
+public:
+	int m_id;
+	torch::Tensor m_Rh;
+	torch::Tensor m_Th;
+	torch::Tensor m_poses;
+	torch::Tensor m_shapes;
+	person(int id, torch::Tensor Rh, torch::Tensor Th, torch::Tensor poses, torch::Tensor shapes);
+	virtual ~person() {};
+};
 
 class LinearBlendSkinning final
 {
@@ -270,6 +283,8 @@ public: // PUBLIC METHODS
 // 		return torch.einsum('bik,ji->bjk', [vertices, J_regressor])
 
 
+	void write_persons(std::vector<person*> persons, std::ofstream& file);
+	void write_json(std::ofstream& file, const int id, const torch::Tensor& Rh, const torch::Tensor& Th, const torch::Tensor& poses, const torch::Tensor& shapes);
 
 	void hybrik(const torch::Tensor& torpose_skeleton,
 		const torch::Tensor& betas,

@@ -1,3 +1,4 @@
+#pragma optimize( "", on )
 
 #include <chrono>
 #include <torch/torch.h>
@@ -319,6 +320,7 @@ using ms = std::chrono::milliseconds;
 using clk = std::chrono::system_clock;
 #include "torch/script.h"
 using namespace torch::indexing;
+
 int main(int argc, char const* argv[])
 {
 	

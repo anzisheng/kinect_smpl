@@ -490,7 +490,10 @@ torch::Tensor SMPL::getVertex() noexcept(false)
     catch(std::exception &e) {
         throw;
     }
-
+    if (SHOWOUT)
+    {
+        std::cout << "vertices" << vertices.sizes() << std::endl;
+    }
     return vertices;
 }
 
@@ -913,7 +916,7 @@ void SMPL::getSkeleton(int64_t index,
     return;
 }
 
-void SMPL::hybrik(const torch::Tensor& pose_skeleton, const torch::Tensor& betas)
+void SMPL::hybrik(const torch::Tensor& pose_skeleton, const torch::Tensor& betas, const torch::Tensor& restJoints_24)
 {
     batch_size = pose_skeleton.size(0);
 
@@ -959,7 +962,8 @@ void SMPL::hybrik(const torch::Tensor& pose_skeleton, const torch::Tensor& betas
         J_regressor_h36m, //
         m_parents,
         m_children,
-        m__weights
+        m__weights,
+        restJoints_24
     );
 
 

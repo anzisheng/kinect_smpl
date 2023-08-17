@@ -1865,12 +1865,220 @@ namespace smpl
 		}
 		myfile << *((ptr + 9));
 		myfile << "]\n]\n";
-        myfile << "}\n";
-            
-
+        myfile << "}\n";            
 
 
     }
+
+
+/*
+	def umeyama(src, dst, estimate_scale) 
+		References
+		----------
+		..[1] "Least-squares estimation of transformation parameters between two
+		point patterns", Shinji Umeyama, PAMI 1991, DOI: 10.1109/34.88573
+		"""
+
+		num = src.shape[0]
+		dim = src.shape[1]
+
+		# Compute mean of src and dst.
+		src_mean = src.mean(axis = 0)
+		dst_mean = dst.mean(axis = 0)
+
+		# Subtract mean from src and dst.
+		src_demean = src - src_mean
+		dst_demean = dst - dst_mean
+
+		# Eq. (38).
+		A = np.dot(dst_demean.T, src_demean) / num
+
+		# Eq. (39).
+		d = np.ones((dim, ), dtype = np.double)
+		if np.linalg.det(A) < 0:
+	d[dim - 1] = -1
+
+		T = np.eye(dim + 1, dtype = np.double)
+
+		U, S, V = np.linalg.svd(A)
+
+		# Eq. (40) and (43).
+		rank = np.linalg.matrix_rank(A)
+		if rank == 0:
+	return np.nan * T
+		elif rank == dim - 1 :
+		if np.linalg.det(U)* np.linalg.det(V) > 0:
+	T[:dim, : dim] = np.dot(U, V)
+		else :
+			s = d[dim - 1]
+			d[dim - 1] = -1
+			T[:dim, : dim] = np.dot(U, np.dot(np.diag(d), V))
+			d[dim - 1] = s
+		else:
+	T[:dim, : dim] = np.dot(U, np.dot(np.diag(d), V.T))
+
+		if estimate_scale :
+			# Eq. (41) and (42).
+			scale = 1.0 / src_demean.var(axis = 0).sum() * np.dot(S, d)
+		else:
+	scale = 1.0
+
+		# the python umeyama get a wrong rotation in some unknow condition
+		# so we compare the two results and choose the minimum
+		# it will be fixed in the future
+		homo_src = np.insert(src, 3, 1, axis = 1).T
+		rot = T[:dim, : dim]
+
+		rots = []
+		losses = []
+		for i in range(2) :
+			if i == 1 :
+				rot[:, : 2] *= -1
+				transform = np.eye(dim + 1, dtype = np.double)
+				transform[:dim, : dim] = rot * scale
+				transform[:dim, dim] = dst_mean - scale * np.dot(T[:dim, : dim], src_mean.T)
+				transed = np.dot(transform, homo_src).T[:, : 3]
+				loss = np.linalg.norm(transed - dst)
+				losses.append(loss)
+				rots.append(rot.copy())
+				# T[:dim, dim] = dst_mean - scale * np.dot(T[:dim, : dim], src_mean.T)
+				# T[:dim, : dim] *= scale
+				# print(T)
+
+				# since only the smpl parameters is needed, we return rotation, translation and scale
+				trans = dst_mean - scale * np.dot(T[:dim, : dim], src_mean.T)
+				if losses[0] > losses[1]:
+	rot = rots[1]
+				else:
+	rot = rots[0]
+
+		return rot, trans, scale
+        */
+    std::tuple<torch::Tensor, torch::Tensor> LinearBlendSkinning::umeyama(torch::Tensor src, torch::Tensor dst)
+    {
+// 		"""Estimate N-D similarity transformation with or without scaling.
+// 			Parameters
+// 			----------
+// 			src : (M, N) array
+// 			Source coordinates.
+// 			dst : (M, N) array
+// 			Destination coordinates.
+// 			estimate_scale : bool
+// 			Whether to estimate scaling factor.
+// 			Returns
+// 			------ -
+// 			T : (N + 1, N + 1)
+// 			The homogeneous similarity transformation matrix.The matrix contains
+// 			NaN values only if the problem is not well - conditioned.
+
+        int num = src.size(0);// [0] ;
+        int dim = src.size(1);
+		// Compute mean of src and dst.
+        torch::Tensor src_mean = src.mean(0);
+        torch::Tensor dst_mean = dst.mean(0);
+
+		//# Subtract mean from src and dst.
+        torch::Tensor 	src_demean = src - src_mean;
+        torch::Tensor 	dst_demean = dst - dst_mean;
+
+
+        torch::Tensor 	A = torch::dot(dst_demean.transpose(0,1), src_demean) / num;
+        torch::Tensor d = torch::ones({ dim });// , dtype = np.double)
+
+        //torch::linalg.det(A);
+		if (torch::linalg::det(A).item().toFloat() < 0)
+        {
+            d[dim - 1] = -1;
+        }
+
+        torch::Tensor 	T = torch::eye(dim + 1);// , dtype = np.double)
+
+        std::tuple<at::Tensor, at::Tensor, at::Tensor> t;
+        t = torch::svd(A);
+
+        torch::Tensor U = std::get<0>(t);
+        torch::Tensor S = std::get<1>(t);
+        torch::Tensor V = std::get<2>(t);
+
+        int rank = torch::linalg::matrix_rank(A, 0 ,true).item().toInt();//anzs
+
+        if (rank == dim - 1)
+        {
+            if ((torch::linalg::det(U) * torch::linalg::det(V)).item().toInt() > 0)
+            {
+                T.index({Slice(None,dim), Slice(None,dim)}) = torch::dot(U, V);
+            }       
+            else
+            {
+                torch::Tensor s = d[dim - 1];
+                d[dim - 1] = -1;
+                T.index({Slice(None, dim), Slice(None, dim)}) = torch::dot(U, torch::dot(torch::diag(d), V));
+                d[dim - 1] = s;
+            }
+         }
+        else
+        {
+            T.index({Slice(None,dim), Slice(None, dim)}) = torch::dot(U, torch::dot(torch::diag(d), V.transpose(0,1)));
+         }
+
+        float scale = 1.0f;
+
+        /* Is there a way to insert a tensor into an existing tensor? 
+        * https://discuss.pytorch.org/t/is-there-a-way-to-insert-a-tensor-into-an-existing-tensor/14642
+		* a = torch.rand(3, 4)
+        b = torch.zeros(1, 4)
+
+        idx = 1
+        c = torch.cat([a[:idx], b, a[idx:]], 0)
+        */
+
+        torch::Tensor homo_src;
+        //torch::Tensor homo_src = torch::cat(src, 3, 1, axis = 1).T; //在第三行上插入1
+        //。。。。
+        加加
+        torch::Tensor  rot = T.index({Slice(None,dim),Slice(None,dim)});// [:dim, : dim] ;
+
+        std::vector< torch::Tensor> rots;// = [];
+        std::vector< float>	losses;// = []
+        for (int i = 0; i < 2; i++)
+        {
+            if (i == 1)
+            {
+                //rot[:, : 2] *= -1;
+                rot.index({ Slice(), Slice(None,2) }) *= -1;
+            }
+            //transform = np.eye(dim + 1, dtype = np.double)
+            torch::Tensor transform = torch::eye(dim + 1);
+            transform.index({ Slice(None,dim),Slice(None,dim) }) = rot * scale;
+            transform.index({ Slice(None, dim),dim }) = dst_mean - scale * torch::dot(T.index({ Slice(None,dim), Slice(None,dim) }), src_mean.transpose(0,1));
+            torch::Tensor transed = torch::dot(transform, homo_src).transpose(0,1).index({ Slice(), Slice(None, 3)});// [:, : 3]
+            float loss = torch::norm(transed - dst, 2).item().toFloat();
+            //losses.append(loss);
+            losses.push_back(loss);
+            //rots.append(rot.copy())
+            rots.push_back(rot);
+
+        }
+
+		//# since only the smpl parameters is needed, we return rotation, translation and scale
+	//# since only the smpl parameters is needed, we return rotation, translation and scale
+        torch::Tensor  trans = dst_mean - scale * torch::dot(T.index({ Slice(None, dim),Slice(None,dim) }), src_mean.transpose(0,1));// [:dim, : dim] , src_mean.T)
+        if (losses[0] > losses[1])
+        {
+            rot = rots[1];
+        }            
+        else
+        {
+            rot = rots[0];
+        }         
+
+        std::tuple<torch::Tensor, torch::Tensor> result = std::make_tuple(rot, trans);
+
+        //, trans, scale
+        return result;
+
+    }
+
 
 
     using ms = std::chrono::milliseconds;
@@ -1887,7 +2095,8 @@ namespace smpl
         const torch::Tensor& J_regressor_h36m,
         const torch::Tensor& parents,
         const torch::Tensor& children,
-        const torch::Tensor& lbs_weights)
+        const torch::Tensor& lbs_weights,
+        const torch::Tensor& restJoints_24)
     {
         if (SHOWOUT)
         {
@@ -2013,6 +2222,31 @@ namespace smpl
         std::cout << "Time duration to compute pose: " << (double)duration.count()  << " ms" << std::endl;
 
         std::vector<person*>  g_persons;
+
+        //joints = (kpts_v[0, [16, 17, 1, 2, 12, 0]]).cpu() //#12: neck, 0 : pelvis
+
+        torch::Tensor joint0 = restJoints_24.index({ 0 });
+		if (SHOWOUT)
+		{
+			std::cout << "joint0 ;" << joint0 << std::endl;
+		}
+        torch::Tensor b = torch::tensor({ 16, 17, 1, 2, 12, 0 });
+        torch::Tensor joints = restJoints_24.index({ 0,{b} }).cpu();// [16] [17] .cpu();
+        if (SHOWOUT)
+        {
+            std::cout << "joints;" << joints << std::endl;
+        }
+
+        torch::Tensor joints3d = pose_skeleton.index({ 0,{b} }).cpu();//[:, [16, 17, 1, 2, 12, 0]])  #   [[5, 2, 12, 9]]
+
+        std::tuple<torch::Tensor, torch::Tensor> rot_trans = umeyama(joints, joints3d);
+// 		joints3d = torch.squeeze(joints3d)
+// 			joints3d = np.array(joints3d)
+
+		if (SHOWOUT)
+		{
+			std::cout << "joints3d;" << joints3d << std::endl;
+		}
         int id = 0;
         torch::Tensor Rh = torch::tensor({ 1.0f, 1.0f, 1.0f });
         torch::Tensor Th = torch::tensor({ 0.3, 0.3, 0.3 });

@@ -357,8 +357,24 @@ int main(int argc, char const* argv[])
 	SINGLE_SMPL::get()->setModelPath(modelPath);
 	SINGLE_SMPL::get()->init();
 
+	//replace
+	torch::Tensor vertices;
+	torch::Tensor beta0;
+	torch::Tensor theta0;
 
-	p_smplcam->call_forward(); //.hybrik(); // .skinning();
+	beta0 = 0.3 * torch::rand({ BATCH_SIZE, SHAPE_BASIS_DIM }).to(device);
+
+	float pose_rand_amplitude0 = 0.0;
+	theta0 = pose_rand_amplitude0 * torch::rand({ BATCH_SIZE, JOINT_NUM, 3 }) - pose_rand_amplitude0 / 2 * torch::ones({ BATCH_SIZE, JOINT_NUM, 3 });
+
+	SINGLE_SMPL::get()->launch(beta0, theta0);
+	torch::Tensor joints = SINGLE_SMPL::get()->getRestJoint();
+	std::cout << "joints " << joints << std::endl;
+
+	
+
+
+	p_smplcam->call_forward(joints); //.hybrik(); // .skinning();
 
 // 	//anzs ¼ÓÔØxyz.npy
 // 	cnpy::NpyArray arr = cnpy::npy_load("data/xyz.npy");
@@ -458,7 +474,7 @@ int main(int argc, char const* argv[])
 // 	SINGLE_SMPL::get()->setModelPath(modelPath);
 // 	SINGLE_SMPL::get()->init();
 // 	
-	torch::Tensor vertices;
+	torch::Tensor vertices0;
 	torch::Tensor beta;
 	torch::Tensor theta;
 
@@ -501,6 +517,9 @@ int main(int argc, char const* argv[])
 
 			vertices = SINGLE_SMPL::get()->getVertex();
 			SINGLE_SMPL::get()->setVertPath("model.obj");
+
+			torch::Tensor joints = SINGLE_SMPL::get()->getRestJoint();
+			std::cout << "joints " << joints.sizes() << std::endl;
 			//SINGLE_SMPL::get()->out(0); 
 		}
 		catch (std::exception& e)

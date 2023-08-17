@@ -9,7 +9,7 @@ class smplcam
 {
 public:
 	smplcam(torch::Device device);
-	void call_forward(/*const torch::Tensor& xyz,const torch::Tensor& shape*/);
+	void call_forward(const torch::Tensor& restJoints_24);
 public:
 	smpl::SMPL* m_smpl;
 	torch::Tensor m_pred_xyz_jts_29;

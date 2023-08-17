@@ -24,7 +24,7 @@ smplcam::smplcam(torch::Device device)
 
 }
 
-void smplcam::call_forward(/*const torch::Tensor& xyz, const torch::Tensor& shape*/)
+void smplcam::call_forward(const torch::Tensor& restJoints_24)
 {
 	
 	m_pred_xyz_jts_29 = m_pred_xyz_jts_29 * 2.2;
@@ -34,7 +34,7 @@ void smplcam::call_forward(/*const torch::Tensor& xyz, const torch::Tensor& shap
 		std::cout << "m_pred_shape:" << m_pred_shape << std::endl;
 
 	}
-	m_smpl->hybrik(m_pred_xyz_jts_29, m_pred_shape);
+	m_smpl->hybrik(m_pred_xyz_jts_29, m_pred_shape,restJoints_24);
 
 
 

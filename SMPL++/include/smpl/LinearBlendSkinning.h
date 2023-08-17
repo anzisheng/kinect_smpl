@@ -34,6 +34,7 @@
 #include <torch/torch.h>
 #include <fstream>
 #include <iostream>
+#include <tuple>
 //using namespace std;
 //===== EXTERNAL FORWARD DECLARATIONS =========================================
 
@@ -297,7 +298,8 @@ public: // PUBLIC METHODS
 		const torch::Tensor& J_regressor_h36m,
 		const torch::Tensor& parents,
 		const torch::Tensor& children,
-		const torch::Tensor& lbs_weights);// dtype = torch.float32, train = False, leaf_thetas = None)
+		const torch::Tensor& lbs_weights,
+		const torch::Tensor& restJoints_24);// dtype = torch.float32, train = False, leaf_thetas = None)
 
 
 	torch::Tensor batch_inverse_kinematics_transform(
@@ -324,6 +326,8 @@ public: // PUBLIC METHODS
 	torch::Tensor rotation_matrix_to_quaternion(torch::Tensor& rotation_matrix, double eps = 0.000001);
 	torch::Tensor rotmat_to_quat(torch::Tensor& rotation_matrix);
 	torch::Tensor quaternion_to_angle_axis(torch::Tensor& quaternion);
+	std::tuple<torch::Tensor, torch::Tensor> umeyama(torch::Tensor src, torch::Tensor dst);
+
 
 };
 

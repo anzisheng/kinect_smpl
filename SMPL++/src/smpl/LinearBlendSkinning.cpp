@@ -2100,7 +2100,7 @@ namespace smpl
         {
             if (i == 1)
             {
-                rot.index({Slice(), Slice(None,2)})/*[:, : 2] */ *= -1;
+                //rot.index({Slice(), Slice(None,2)})/*[:, : 2] */ *= -1;
                 rot.index({ Slice(), Slice(None,2) }) *= -1;
 				if (SHOWOUT)
 				{
@@ -2150,7 +2150,7 @@ namespace smpl
             //losses.append(loss);
             losses.push_back(loss);
             //rots.append(rot.copy())
-            rots.push_back(rot);
+            rots.push_back(rot.clone());
 
         }
 
@@ -2354,8 +2354,69 @@ namespace smpl
 
         torch::Tensor rot_global = std::get<0>(rot_trans);
         torch::Tensor trans_global = std::get<1>(rot_trans);
+		if (SHOWOUT)
+		{
+			std::cout << "trans_global" << trans_global << std::endl;
+		}
 
-        torch::Tensor rot_last = cv2.Rodrigues(rot_global)[0].reshape(1, 3)
+        cv::Mat dst;
+        try
+        {
+            rot_global = rot_global.reshape({ 9,1 });
+			if (SHOWOUT)
+			{
+				std::cout << "rot_global" << rot_global << std::endl;
+			}
+            auto tttt0 = rot_global.index({ Slice(0,9)}).to(torch::kFloat);// .item();
+            auto x0 = tttt0.index({ 0 }).item().toFloat();
+            auto x1 = tttt0.index({ 1 }).item().toFloat();
+            auto x2 = tttt0.index({ 2 }).item().toFloat();
+
+			auto x3 = tttt0.index({ 3 }).item().toFloat();
+			auto x4 = tttt0.index({ 4 }).item().toFloat();
+			auto x5 = tttt0.index({ 5 }).item().toFloat();
+
+			auto x6 = tttt0.index({ 6 }).item().toFloat();
+			auto x7 = tttt0.index({ 7 }).item().toFloat();
+			auto x8 = tttt0.index({ 8 }).item().toFloat();
+
+
+            cv::Mat src = (Mat_<float>(3, 3)<< x0, x1,x2, x3, x4, x5, x6, x7, x8);
+            //src(0, 0) = 0;
+            
+ 			cv::Rodrigues(src, dst);
+			if (SHOWOUT)
+			{
+				//std::cout << "tttt" << tttt0 << std::endl;
+				if (SHOWOUT)
+				{
+					std::cout<<"dst_rot" << dst << std::endl;
+                    //std::cout << "dst_rot" << dst(0).dims << std::endl;
+                    //std::cout << "dst_rot" << dst(1).dims << std::endl;
+				}
+			}
+
+
+        }
+        catch (const exception& e)
+        {
+            std::cout << e.what() << std::endl;
+            throw;
+        }
+		
+        dst = dst.reshape(1, 3);
+        torch::Tensor rot = torch::from_blob(dst.data, { 1, 3 }, torch::kFloat);
+		if (SHOWOUT)
+		{
+			std::cout << "rot" << rot << std::endl;
+		}
+
+
+//		auto x = trans_global.index({ 0 }).to(torch::kFloat).item();
+		//float xx = x.toFloat();
+        
+
+        //torch::Tensor rot_last = cv2.Rodrigues(rot_global)[0].reshape(1, 3)
 
 
 
@@ -2364,8 +2425,8 @@ namespace smpl
 
 		
         int id = 0;
-        torch::Tensor Rh = torch::tensor({ 1.0f, 1.0f, 1.0f });
-        torch::Tensor Th = torch::tensor({ 0.3, 0.3, 0.3 });
+        torch::Tensor Rh = rot;// torch::tensor({ 1.0f, 1.0f, 1.0f });
+        torch::Tensor Th = trans_global;// torch::tensor({ 0.3, 0.3, 0.3 });
         torch::Tensor shapes = torch::zeros({10});
         quat = quat.to(torch::kCPU);
         person* p = new person(id, Rh, Th,quat,shapes);
@@ -2377,7 +2438,7 @@ namespace smpl
 		/*torch::Tensor*/ shapes = torch::zeros({ 10 });
 		quat = quat.to(torch::kCPU);
 		person* p2 = new person(id, Rh, Th, quat, shapes);
-		g_persons.push_back(p2);
+		//g_persons.push_back(p2);
 
 
 
